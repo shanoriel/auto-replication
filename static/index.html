@@ -1,0 +1,1302 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>AutoReplication Gateway</title>
+    <style>
+      :root {
+        --bg: #f4efe2;
+        --paper: #fffaf0;
+        --ink: #1e1c18;
+        --muted: #6a6458;
+        --accent: #0d6b5f;
+        --accent-soft: #d9ece7;
+        --line: #d7ccba;
+        --warn: #aa5d1f;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at top left, rgba(13, 107, 95, 0.18), transparent 30%),
+          linear-gradient(180deg, #f8f3e8 0%, var(--bg) 100%);
+      }
+
+      .shell {
+        min-height: 100vh;
+        display: grid;
+        grid-template-rows: auto 1fr;
+      }
+
+      header {
+        padding: 24px 28px 18px;
+        border-bottom: 1px solid rgba(30, 28, 24, 0.08);
+        backdrop-filter: blur(8px);
+        display: grid;
+        grid-template-columns: minmax(260px, 420px) 1fr;
+        gap: 20px;
+        align-items: start;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(28px, 4vw, 44px);
+        letter-spacing: 0.02em;
+      }
+
+      .subhead {
+        margin-top: 8px;
+        color: var(--muted);
+        font-size: 15px;
+      }
+
+      .header-dashboard {
+        display: grid;
+        grid-template-columns: minmax(180px, 240px) minmax(220px, 300px) 1fr;
+        gap: 12px;
+      }
+
+      .dashboard-card {
+        background: rgba(255, 250, 240, 0.88);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 14px 16px;
+        box-shadow: 0 10px 24px rgba(52, 40, 24, 0.06);
+      }
+
+      .dashboard-title {
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      .dashboard-value {
+        margin-top: 10px;
+        font-size: 24px;
+      }
+
+      .dashboard-meta {
+        margin-top: 8px;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.4;
+      }
+
+      .machine-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+        gap: 10px;
+      }
+
+      .machine-card {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 12px;
+        background: rgba(255, 255, 255, 0.7);
+      }
+
+      main {
+        display: grid;
+        grid-template-columns: 340px minmax(480px, 1fr);
+        grid-template-rows: minmax(0, 1fr) auto;
+        gap: 18px;
+        padding: 20px;
+      }
+
+      .main-panel {
+        min-height: 0;
+      }
+
+      .agents-panel {
+        grid-row: 1;
+      }
+
+      .detail-panel {
+        grid-row: 1;
+      }
+
+      .create-panel {
+        grid-column: 1 / -1;
+        grid-row: 2;
+      }
+
+      .panel {
+        background: rgba(255, 250, 240, 0.92);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        box-shadow: 0 18px 40px rgba(52, 40, 24, 0.08);
+        overflow: hidden;
+      }
+
+      .panel-header {
+        padding: 14px 16px;
+        border-bottom: 1px solid var(--line);
+        font-size: 14px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      .panel-body {
+        padding: 16px;
+      }
+
+      .list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .card {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 12px;
+        background: rgba(255, 255, 255, 0.7);
+        cursor: pointer;
+      }
+
+      .card.active {
+        border-color: var(--accent);
+        background: var(--accent-soft);
+      }
+
+      .title-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .title-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+      }
+
+      .pill {
+        border-radius: 999px;
+        padding: 2px 10px;
+        font-size: 12px;
+        border: 1px solid currentColor;
+        color: var(--accent);
+      }
+
+      .status-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 999px;
+        flex: 0 0 auto;
+        background: #8b877f;
+        box-shadow: 0 0 0 0 rgba(139, 135, 127, 0.45);
+      }
+
+      .status-running {
+        background: #1b8f4d;
+        box-shadow: 0 0 0 0 rgba(27, 143, 77, 0.45);
+        animation: breathe 2.2s ease-in-out infinite;
+      }
+
+      .status-idle {
+        background: #2b6de0;
+        box-shadow: 0 0 0 1px rgba(43, 109, 224, 0.25);
+      }
+
+      .status-fault {
+        background: #cf352e;
+        box-shadow: 0 0 0 0 rgba(207, 53, 46, 0.5);
+        animation: alert 0.55s linear infinite;
+      }
+
+      .status-pending {
+        background: #8b877f;
+      }
+
+      .meta {
+        margin-top: 8px;
+        font-size: 13px;
+        color: var(--muted);
+        line-height: 1.4;
+      }
+
+      .detail-grid {
+        display: grid;
+        gap: 14px;
+      }
+
+      .detail-columns {
+        display: grid;
+        grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr);
+        gap: 14px;
+        align-items: start;
+      }
+
+      .form-grid {
+        display: grid;
+        gap: 10px;
+      }
+
+      .create-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr 1.2fr 2fr auto;
+        gap: 12px;
+        align-items: end;
+      }
+
+      .stack {
+        display: grid;
+        gap: 12px;
+      }
+
+      .detail-block {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 12px;
+        background: rgba(255, 255, 255, 0.72);
+        min-width: 0;
+      }
+
+      .detail-block h3 {
+        margin: 0 0 8px;
+        font-size: 15px;
+      }
+
+      .detail-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 8px;
+      }
+
+      .detail-head h3 {
+        margin: 0;
+      }
+
+      .detail-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .detail-block pre {
+        margin: 0;
+        font-size: 12px;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+
+      label {
+        display: grid;
+        gap: 6px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      input,
+      select {
+        width: 100%;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        padding: 10px 12px;
+        background: #fffdf8;
+        font: inherit;
+        color: var(--ink);
+      }
+
+      textarea {
+        width: 100%;
+        min-height: 140px;
+        border-radius: 14px;
+        border: 1px solid var(--line);
+        padding: 12px;
+        background: #fffdf8;
+        font: inherit;
+        resize: vertical;
+      }
+
+      button {
+        border: 0;
+        border-radius: 999px;
+        padding: 10px 16px;
+        background: var(--accent);
+        color: white;
+        font: inherit;
+        cursor: pointer;
+      }
+
+      .empty {
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .warning {
+        color: var(--warn);
+      }
+
+      .message-list {
+        display: grid;
+        gap: 10px;
+        max-height: 460px;
+        overflow: auto;
+        min-width: 0;
+      }
+
+      .message {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 10px 12px;
+        background: rgba(255, 255, 255, 0.76);
+      }
+
+      .message.operator {
+        border-color: rgba(13, 107, 95, 0.35);
+        background: rgba(217, 236, 231, 0.72);
+      }
+
+      .message.agent {
+        border-color: rgba(43, 109, 224, 0.2);
+      }
+
+      .message-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        font-size: 12px;
+        color: var(--muted);
+        margin-bottom: 8px;
+      }
+
+      .message-body {
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-size: 13px;
+        line-height: 1.45;
+      }
+
+      .ghost-button {
+        background: transparent;
+        color: var(--accent);
+        border: 1px solid var(--accent);
+      }
+
+      .danger-button {
+        background: transparent;
+        color: #b2462e;
+        border: 1px solid rgba(178, 70, 46, 0.45);
+        padding: 8px 10px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .icon-button svg {
+        width: 18px;
+        height: 18px;
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(30, 28, 24, 0.36);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        z-index: 20;
+      }
+
+      .modal-backdrop.open {
+        display: flex;
+      }
+
+      .modal-card {
+        width: min(960px, 100%);
+        max-height: min(80vh, 900px);
+        background: var(--paper);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        box-shadow: 0 24px 48px rgba(30, 28, 24, 0.18);
+        overflow: hidden;
+        display: grid;
+        grid-template-rows: auto 1fr;
+      }
+
+      .modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 16px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .modal-body {
+        padding: 16px;
+        overflow: auto;
+      }
+
+      .confirm-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: 16px;
+      }
+
+      .toast-stack {
+        position: fixed;
+        top: 18px;
+        right: 18px;
+        display: grid;
+        gap: 10px;
+        z-index: 40;
+        width: min(360px, calc(100vw - 36px));
+      }
+
+      .toast {
+        background: rgba(255, 250, 240, 0.97);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        box-shadow: 0 16px 30px rgba(30, 28, 24, 0.12);
+        overflow: hidden;
+      }
+
+      .toast-body {
+        padding: 12px 14px 10px;
+        font-size: 13px;
+        line-height: 1.45;
+      }
+
+      .toast.success {
+        border-color: rgba(27, 143, 77, 0.35);
+      }
+
+      .toast.error {
+        border-color: rgba(178, 70, 46, 0.4);
+      }
+
+      .toast-progress {
+        height: 3px;
+        width: 100%;
+        background: rgba(13, 107, 95, 0.16);
+      }
+
+      .toast.success .toast-progress::after,
+      .toast.error .toast-progress::after,
+      .toast.info .toast-progress::after {
+        content: "";
+        display: block;
+        height: 100%;
+        width: 100%;
+        background: currentColor;
+        transform-origin: left center;
+        animation: toastShrink linear forwards;
+      }
+
+      .toast.success {
+        color: #1b8f4d;
+      }
+
+      .toast.error {
+        color: #b2462e;
+      }
+
+      .toast.info {
+        color: #0d6b5f;
+      }
+
+      @keyframes breathe {
+        0%, 100% {
+          transform: scale(0.92);
+          box-shadow: 0 0 0 0 rgba(27, 143, 77, 0.15);
+        }
+        50% {
+          transform: scale(1.08);
+          box-shadow: 0 0 0 8px rgba(27, 143, 77, 0.06);
+        }
+      }
+
+      @keyframes alert {
+        0%, 100% {
+          opacity: 1;
+          transform: scale(1);
+        }
+        50% {
+          opacity: 0.25;
+          transform: scale(0.82);
+        }
+      }
+
+      @keyframes toastShrink {
+        from {
+          transform: scaleX(1);
+        }
+        to {
+          transform: scaleX(0);
+        }
+      }
+
+      @media (max-width: 1120px) {
+        header {
+          grid-template-columns: 1fr;
+        }
+
+        .header-dashboard,
+        main {
+          grid-template-columns: 1fr;
+          grid-template-rows: auto;
+        }
+
+        .agents-panel,
+        .detail-panel,
+        .create-panel {
+          grid-column: auto;
+          grid-row: auto;
+        }
+
+        .detail-columns,
+        .create-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <header>
+        <div>
+          <h1>AutoReplication Gateway</h1>
+          <div class="subhead">Single control plane on port 11451. Agents report state here, operators steer from here.</div>
+        </div>
+        <div class="header-dashboard">
+          <div class="dashboard-card">
+            <div class="dashboard-title">Gateway</div>
+            <div id="gateway-status" class="dashboard-value">Loading</div>
+            <div id="gateway-meta" class="dashboard-meta">Waiting for health snapshot.</div>
+          </div>
+          <div class="dashboard-card">
+            <div class="dashboard-title">Agent Status</div>
+            <div id="agent-status-summary" class="dashboard-value">0 / 0 / 0</div>
+            <div class="dashboard-meta">Running / Idle / Fault</div>
+          </div>
+          <div class="dashboard-card">
+            <div class="dashboard-title">Machines</div>
+            <div id="machine-summary" class="dashboard-meta">Waiting for machine state.</div>
+            <div id="machine-grid" class="machine-grid" style="margin-top: 10px;"></div>
+          </div>
+        </div>
+      </header>
+      <main>
+        <section class="panel agents-panel main-panel">
+          <div class="panel-header">Agents</div>
+          <div class="panel-body">
+            <div id="agents" class="list"></div>
+          </div>
+        </section>
+        <section class="panel detail-panel main-panel">
+          <div class="panel-header">Agent Detail</div>
+          <div class="panel-body detail-grid">
+            <div class="detail-columns">
+              <div class="stack">
+                <div class="detail-block">
+                  <div class="detail-head">
+                    <h3>Current Agent</h3>
+                    <div class="detail-actions">
+                      <button id="open-detail-button" class="ghost-button" type="button">View Details</button>
+                      <button id="delete-agent-button" class="danger-button icon-button" type="button" title="Delete agent" aria-label="Delete agent">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M3 6h18"/>
+                          <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/>
+                          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                          <path d="M10 11v6"/>
+                          <path d="M14 11v6"/>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div id="session-detail" class="empty">Select an agent to inspect activity and steer it.</div>
+                </div>
+                <div class="detail-block">
+                  <h3>Steer Agent</h3>
+                  <textarea id="message-input" placeholder="Send a steer message to the selected agent..."></textarea>
+                  <div style="margin-top: 12px; display: flex; gap: 10px; align-items: center;">
+                    <button id="send-button" type="button">Send Steer</button>
+                    <button id="open-events-button" class="ghost-button" type="button">View Events</button>
+                    <span id="message-status" class="empty"></span>
+                  </div>
+                </div>
+              </div>
+              <div class="detail-block">
+                <h3>Agent Message History</h3>
+                <div id="messages" class="message-list">
+                  <div class="empty">No agent selected.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section class="panel create-panel">
+          <div class="panel-header">Add New Agent</div>
+          <div class="panel-body">
+            <div class="create-grid">
+              <label>
+                Machine
+                <select id="machine-select"></select>
+              </label>
+              <label>
+                Preset
+                <select id="preset-select"></select>
+              </label>
+              <label>
+                Model
+                <select id="model-select"></select>
+              </label>
+              <label>
+                Agent Name
+                <input id="title-input" placeholder="Diffusion Policy Push-T">
+              </label>
+              <label>
+                Initial Instruction
+                <textarea id="initial-prompt" placeholder="Inspect the workspace, read the preset instructions, and start with a replication plan."></textarea>
+              </label>
+              <div class="form-grid">
+                <button id="create-session-button" type="button">Create Agent</button>
+                <span id="create-session-status" class="empty"></span>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+    <div id="events-modal" class="modal-backdrop" aria-hidden="true">
+      <div class="modal-card">
+        <div class="modal-header">
+          <strong>Agent Events</strong>
+          <button id="close-events-button" class="ghost-button" type="button">Close</button>
+        </div>
+        <div class="modal-body">
+          <pre id="events" class="empty">No agent selected.</pre>
+        </div>
+      </div>
+    </div>
+    <div id="detail-modal" class="modal-backdrop" aria-hidden="true">
+      <div class="modal-card">
+        <div class="modal-header">
+          <strong>Agent Details</strong>
+          <button id="close-detail-button" class="ghost-button" type="button">Close</button>
+        </div>
+        <div class="modal-body">
+          <div id="detail-modal-content" class="empty">No agent selected.</div>
+        </div>
+      </div>
+    </div>
+    <div id="delete-confirm-modal" class="modal-backdrop" aria-hidden="true">
+      <div class="modal-card" style="width:min(560px, 100%);max-height:none;">
+        <div class="modal-header">
+          <strong>Delete Agent</strong>
+          <button id="close-delete-confirm-button" class="ghost-button" type="button">Close</button>
+        </div>
+        <div class="modal-body">
+          <div id="delete-confirm-copy" class="detail-block">
+            No agent selected.
+          </div>
+          <div class="confirm-actions">
+            <button id="cancel-delete-button" class="ghost-button" type="button">Cancel</button>
+            <button id="confirm-delete-button" class="danger-button" type="button">Delete Agent</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="toast-stack" class="toast-stack" aria-live="polite" aria-atomic="true"></div>
+    <script>
+      let selectedSessionId = null;
+      let eventsModalOpen = false;
+      let detailModalOpen = false;
+      let deleteConfirmOpen = false;
+      let pendingDeleteSessionId = null;
+      let seenAgentMessageIds = new Set();
+      let hydratedMessageSessions = new Set();
+      let catalog = {machines: [], presets: [], models: []};
+      let createFormState = {
+        machineId: null,
+        presetId: null,
+        modelId: null,
+      };
+
+      async function fetchJson(path, options = undefined) {
+        const response = await fetch(path, options);
+        if (!response.ok) {
+          throw new Error(`${response.status} ${response.statusText}`);
+        }
+        return response.json();
+      }
+
+      function showToast(message, tone = "info", durationMs = 3600) {
+        const root = document.getElementById("toast-stack");
+        const toast = document.createElement("div");
+        toast.className = `toast ${tone}`;
+        toast.innerHTML = `
+          <div class="toast-body">${message}</div>
+          <div class="toast-progress"><div></div></div>
+        `;
+        const progress = toast.querySelector(".toast-progress");
+        progress.style.setProperty("color", getComputedStyle(toast).color);
+        progress.firstElementChild?.remove();
+        progress.style.setProperty("--duration", `${durationMs}ms`);
+        progress.innerHTML = "";
+        const bar = document.createElement("div");
+        bar.style.height = "100%";
+        bar.style.width = "100%";
+        bar.style.background = "currentColor";
+        bar.style.transformOrigin = "left center";
+        bar.style.animation = `toastShrink ${durationMs}ms linear forwards`;
+        progress.appendChild(bar);
+        root.appendChild(toast);
+        window.setTimeout(() => {
+          toast.remove();
+        }, durationMs);
+      }
+
+      function formatLocalTime(value) {
+        if (!value) {
+          return "unset";
+        }
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) {
+          return String(value);
+        }
+        const pad = (num) => String(num).padStart(2, "0");
+        return [
+          date.getFullYear(),
+          pad(date.getMonth() + 1),
+          pad(date.getDate()),
+        ].join("-") + " " + [
+          pad(date.getHours()),
+          pad(date.getMinutes()),
+          pad(date.getSeconds()),
+        ].join(":");
+      }
+
+      function statusTone(status) {
+        if (["running", "launching"].includes(status)) {
+          return "running";
+        }
+        if (["failed", "degraded"].includes(status)) {
+          return "fault";
+        }
+        if (["completed", "waiting_input", "idle"].includes(status)) {
+          return "idle";
+        }
+        return "pending";
+      }
+
+      function agentSummaryFromSession(session) {
+        return [
+          session.machine_id || "unset machine",
+          session.preset_id || "unset preset",
+          session.model || "unset model",
+        ].join(" · ");
+      }
+
+      function renderAgentSessions(sessions) {
+        const root = document.getElementById("agents");
+        root.innerHTML = "";
+        if (!sessions.length) {
+          root.innerHTML = '<div class="empty">No agents created yet.</div>';
+          return;
+        }
+        for (const session of sessions) {
+          const card = document.createElement("div");
+          card.className = "card" + (session.id === selectedSessionId ? " active" : "");
+          const tone = statusTone(session.status);
+          card.innerHTML = `
+            <div class="title-row">
+              <div class="title-left">
+                <span class="status-dot status-${tone}"></span>
+                <strong>${session.title}</strong>
+              </div>
+              <span class="pill">${session.status}</span>
+            </div>
+            <div class="meta">
+              ${agentSummaryFromSession(session)}<br>
+              ${session.summary || "No summary yet"}
+            </div>
+          `;
+          card.addEventListener("click", () => {
+            selectedSessionId = session.id;
+            refresh();
+          });
+          root.appendChild(card);
+        }
+      }
+
+      function renderDashboard(health, sessions, agents) {
+        const runningSessions = sessions.filter((session) => ["running", "launching"].includes(session.status)).length;
+        const idleSessions = sessions.filter((session) => ["completed", "waiting_input", "idle"].includes(session.status)).length;
+        const faultSessions = sessions.filter((session) => ["failed", "degraded"].includes(session.status)).length;
+
+        document.getElementById("gateway-status").textContent = health.status === "ok" ? "Online" : String(health.status || "Unknown");
+        document.getElementById("gateway-meta").textContent =
+          `${health.sessions || 0} agents tracked · ${health.agents || 0} connected runtimes`;
+        document.getElementById("agent-status-summary").textContent =
+          `${runningSessions} / ${idleSessions} / ${faultSessions}`;
+
+        const runtimeAgents = agents.filter((agent) => agent.role === "runtime");
+        const machineMap = new Map();
+        for (const machine of catalog.machines) {
+          machineMap.set(machine.id, {machine, runtime: null});
+        }
+        for (const runtimeAgent of runtimeAgents) {
+          const machineId = runtimeAgent.metadata?.machine_id || runtimeAgent.host || runtimeAgent.id;
+          if (!machineMap.has(machineId)) {
+            machineMap.set(machineId, {machine: {id: machineId, name: machineId}, runtime: runtimeAgent});
+          } else {
+            machineMap.get(machineId).runtime = runtimeAgent;
+          }
+        }
+
+        const machineRows = Array.from(machineMap.values());
+        const onlineCount = machineRows.filter((row) => row.runtime && !["failed", "degraded"].includes(row.runtime.status)).length;
+        const faultCount = machineRows.filter((row) => row.runtime && ["failed", "degraded"].includes(row.runtime.status)).length;
+        const offlineCount = machineRows.filter((row) => !row.runtime).length;
+        document.getElementById("machine-summary").textContent =
+          `Online ${onlineCount} · Fault ${faultCount} · Offline ${offlineCount}`;
+
+        const machineGrid = document.getElementById("machine-grid");
+        machineGrid.innerHTML = "";
+        for (const row of machineRows) {
+          const tone = row.runtime ? statusTone(row.runtime.status) : "pending";
+          const card = document.createElement("div");
+          card.className = "machine-card";
+          card.innerHTML = `
+            <div class="title-row">
+              <div class="title-left">
+                <span class="status-dot status-${tone}"></span>
+                <strong>${row.machine.name}</strong>
+              </div>
+              <span class="pill">${row.runtime ? row.runtime.status : "offline"}</span>
+            </div>
+            <div class="meta">
+              ${(row.runtime && row.runtime.summary) || "No runtime connected."}
+            </div>
+          `;
+          machineGrid.appendChild(card);
+        }
+      }
+
+      function renderSessionDetail(session) {
+        const root = document.getElementById("session-detail");
+        const deleteButton = document.getElementById("delete-agent-button");
+        const detailButton = document.getElementById("open-detail-button");
+        if (!session) {
+          root.textContent = "Select an agent to inspect activity and steer it.";
+          deleteButton.disabled = true;
+          detailButton.disabled = true;
+          return;
+        }
+        deleteButton.disabled = false;
+        detailButton.disabled = false;
+        root.innerHTML = `
+          <strong>${session.title}</strong><br>
+          status: ${session.status}<br>
+          machine: ${session.machine_id || "unset"}<br>
+          preset: ${session.preset_id || "unset"}<br>
+          model: ${session.model || "unset"}<br>
+          summary: ${session.summary || "none"}
+        `;
+      }
+
+      function renderDetailModal(session) {
+        const root = document.getElementById("detail-modal-content");
+        if (!session) {
+          root.innerHTML = '<div class="empty">No agent selected.</div>';
+          return;
+        }
+        root.innerHTML = `
+          <div class="detail-grid">
+            <div class="detail-block">
+              <div style="display:grid;grid-template-columns:minmax(120px,180px) 1fr;gap:10px 16px;align-items:start;">
+                <strong>Title</strong><div>${session.title}</div>
+                <strong>Status</strong><div>${session.status}</div>
+                <strong>Role</strong><div>${session.role || "unset"}</div>
+                <strong>Agent ID</strong><div>${session.agent_id}</div>
+                <strong>Machine</strong><div>${session.machine_id || "unset"}</div>
+                <strong>Preset</strong><div>${session.preset_id || "unset"}</div>
+                <strong>Model</strong><div>${session.model || "unset"}</div>
+                <strong>Thread</strong><div>${session.codex_thread_id || "unset"}</div>
+                <strong>Workspace</strong><div>${session.workspace_path || "unset"}</div>
+                <strong>Codex Home</strong><div>${session.codex_home || "unset"}</div>
+                <strong>Created</strong><div>${formatLocalTime(session.created_at)}</div>
+                <strong>Updated</strong><div>${formatLocalTime(session.updated_at)}</div>
+                <strong>Summary</strong><div>${session.summary || "none"}</div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderCatalogOptions() {
+        const machineSelect = document.getElementById("machine-select");
+        const presetSelect = document.getElementById("preset-select");
+        const modelSelect = document.getElementById("model-select");
+        const nextMachineId = createFormState.machineId || catalog.machines[0]?.id || "";
+        const nextPresetId = createFormState.presetId || catalog.presets[0]?.id || "";
+        const nextModelId = createFormState.modelId || catalog.models[0]?.id || "";
+
+        machineSelect.innerHTML = catalog.machines
+          .map((machine) => `<option value="${machine.id}">${machine.name}</option>`)
+          .join("");
+        presetSelect.innerHTML = catalog.presets
+          .map((preset) => `<option value="${preset.id}">${preset.name}</option>`)
+          .join("");
+        modelSelect.innerHTML = catalog.models
+          .map((model) => `<option value="${model.id}">${model.name}</option>`)
+          .join("");
+
+        machineSelect.value = nextMachineId;
+        presetSelect.value = nextPresetId;
+        modelSelect.value = nextModelId;
+
+        createFormState.machineId = machineSelect.value;
+        createFormState.presetId = presetSelect.value;
+        createFormState.modelId = modelSelect.value;
+      }
+
+      function renderEvents(events) {
+        const root = document.getElementById("events");
+        if (!events || !events.length) {
+          root.textContent = "No events for this agent yet.";
+          return;
+        }
+        root.textContent = events
+          .map((event) => `${formatLocalTime(event.created_at)}  ${event.event_type}\n${JSON.stringify(event.payload, null, 2)}`)
+          .join("\n\n");
+      }
+
+      function renderMessages(messages) {
+        const root = document.getElementById("messages");
+        root.innerHTML = "";
+        if (!messages || !messages.length) {
+          root.innerHTML = '<div class="empty">No messages for this agent yet.</div>';
+          return;
+        }
+        for (const message of messages) {
+          const card = document.createElement("div");
+          card.className = `message ${message.sender === "agent" ? "agent" : "operator"}`;
+          card.innerHTML = `
+            <div class="message-head">
+              <span>${message.sender} · ${message.direction} · ${message.status}</span>
+              <span>${formatLocalTime(message.created_at)}</span>
+            </div>
+            <div class="message-body">${message.content}</div>
+          `;
+          root.appendChild(card);
+        }
+      }
+
+      function reconcileAgentMessageToasts(session, messages) {
+        if (!session) {
+          return;
+        }
+        const sessionKey = session.id;
+        const deliveredAgentMessages = messages.filter(
+          (message) => message.sender === "agent" && message.direction === "inbound" && message.status === "delivered"
+        );
+        if (!hydratedMessageSessions.has(sessionKey)) {
+          for (const message of deliveredAgentMessages) {
+            seenAgentMessageIds.add(message.id);
+          }
+          hydratedMessageSessions.add(sessionKey);
+          return;
+        }
+        const unseen = deliveredAgentMessages
+          .filter((message) => !seenAgentMessageIds.has(message.id))
+          .reverse();
+        for (const message of unseen) {
+          seenAgentMessageIds.add(message.id);
+          showToast(`${session.title}: ${message.content.split("\n")[0].slice(0, 120)}`, "info", 4200);
+        }
+      }
+
+      async function openEventsModal() {
+        const status = document.getElementById("message-status");
+        if (!selectedSessionId) {
+          status.textContent = "Select an agent first.";
+          status.className = "warning";
+          return;
+        }
+        eventsModalOpen = true;
+        document.getElementById("events-modal").classList.add("open");
+        document.getElementById("events-modal").setAttribute("aria-hidden", "false");
+        renderEvents([]);
+        const events = await fetchJson(`/api/sessions/${selectedSessionId}/events?limit=40`);
+        renderEvents(events);
+      }
+
+      function closeEventsModal() {
+        eventsModalOpen = false;
+        document.getElementById("events-modal").classList.remove("open");
+        document.getElementById("events-modal").setAttribute("aria-hidden", "true");
+      }
+
+      async function openDetailModal() {
+        const status = document.getElementById("message-status");
+        if (!selectedSessionId) {
+          status.textContent = "Select an agent first.";
+          status.className = "warning";
+          return;
+        }
+        detailModalOpen = true;
+        document.getElementById("detail-modal").classList.add("open");
+        document.getElementById("detail-modal").setAttribute("aria-hidden", "false");
+        const session = await fetchJson(`/api/sessions/${selectedSessionId}`);
+        renderDetailModal(session);
+      }
+
+      function closeDetailModal() {
+        detailModalOpen = false;
+        document.getElementById("detail-modal").classList.remove("open");
+        document.getElementById("detail-modal").setAttribute("aria-hidden", "true");
+      }
+
+      function openDeleteConfirm(session) {
+        pendingDeleteSessionId = session.id;
+        deleteConfirmOpen = true;
+        document.getElementById("delete-confirm-copy").innerHTML = `
+          <strong>${session.title}</strong><br><br>
+          This will remove the agent record, message history, and event history.<br>
+          If the runtime is still active, you can still delete it here. The local runner will ignore the missing record on its next callback.
+        `;
+        document.getElementById("delete-confirm-modal").classList.add("open");
+        document.getElementById("delete-confirm-modal").setAttribute("aria-hidden", "false");
+      }
+
+      function closeDeleteConfirm() {
+        deleteConfirmOpen = false;
+        pendingDeleteSessionId = null;
+        document.getElementById("delete-confirm-modal").classList.remove("open");
+        document.getElementById("delete-confirm-modal").setAttribute("aria-hidden", "true");
+      }
+
+      async function refresh() {
+        const [health, catalogResponse, agents, sessions] = await Promise.all([
+          fetchJson("/health"),
+          fetchJson("/api/catalog"),
+          fetchJson("/api/agents"),
+          fetchJson("/api/sessions"),
+        ]);
+        catalog = catalogResponse;
+        renderCatalogOptions();
+        renderDashboard(health, sessions, agents);
+        renderAgentSessions(sessions);
+
+        const selected = sessions.find((item) => item.id === selectedSessionId) || null;
+        renderSessionDetail(selected);
+        if (detailModalOpen) {
+          renderDetailModal(selected);
+        }
+
+        if (selected) {
+          const messages = await fetchJson(`/api/sessions/${selectedSessionId}/messages?limit=40`);
+          reconcileAgentMessageToasts(selected, messages);
+          renderMessages(messages);
+          if (eventsModalOpen) {
+            const events = await fetchJson(`/api/sessions/${selectedSessionId}/events?limit=40`);
+            renderEvents(events);
+          }
+        } else {
+          renderMessages([]);
+          if (eventsModalOpen) {
+            renderEvents([]);
+          }
+        }
+      }
+
+      async function createSession() {
+        const title = document.getElementById("title-input").value.trim();
+        const initialPrompt = document.getElementById("initial-prompt").value.trim();
+        const machineId = createFormState.machineId || document.getElementById("machine-select").value;
+        const presetId = createFormState.presetId || document.getElementById("preset-select").value;
+        const modelId = createFormState.modelId || document.getElementById("model-select").value;
+
+        if (!title) {
+          showToast("Agent name is required.", "error");
+          return;
+        }
+
+        const created = await fetchJson("/api/sessions", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({
+            title,
+            machine_id: machineId,
+            preset_id: presetId,
+            model: modelId,
+            initial_prompt: initialPrompt || null,
+            status: "created"
+          })
+        });
+
+        selectedSessionId = created.id;
+        document.getElementById("title-input").value = "";
+        document.getElementById("initial-prompt").value = "";
+        showToast(`Created agent ${created.title}.`, "success");
+        await refresh();
+      }
+
+      async function sendMessage() {
+        const status = document.getElementById("message-status");
+        if (!selectedSessionId) {
+          showToast("Select an agent first.", "error");
+          return;
+        }
+
+        const textarea = document.getElementById("message-input");
+        const content = textarea.value.trim();
+        if (!content) {
+          showToast("Message is empty.", "error");
+          return;
+        }
+
+        await fetchJson(`/api/sessions/${selectedSessionId}/messages`, {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({
+            content,
+            sender: "operator",
+            direction: "outbound",
+            status: "queued"
+          })
+        });
+
+        textarea.value = "";
+        status.textContent = "Queued.";
+        status.className = "empty";
+        window.setTimeout(() => {
+          if (status.textContent === "Queued.") {
+            status.textContent = "";
+          }
+        }, 1500);
+        await refresh();
+      }
+
+      async function deleteAgent() {
+        if (!selectedSessionId) {
+          showToast("Select an agent first.", "error");
+          return;
+        }
+
+        const sessions = await fetchJson("/api/sessions");
+        const selected = sessions.find((item) => item.id === selectedSessionId);
+        if (!selected) {
+          showToast("Selected agent no longer exists.", "error");
+          selectedSessionId = null;
+          await refresh();
+          return;
+        }
+
+        openDeleteConfirm(selected);
+      }
+
+      async function confirmDeleteAgent() {
+        if (!pendingDeleteSessionId) {
+          return;
+        }
+        const deletingId = pendingDeleteSessionId;
+        const sessions = await fetchJson("/api/sessions");
+        const selected = sessions.find((item) => item.id === deletingId);
+        const response = await fetch(`/api/sessions/${deletingId}`, {method: "DELETE"});
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          showToast(payload.detail || `Delete failed: ${response.status}`, "error");
+          return;
+        }
+
+        if (selectedSessionId === deletingId) {
+          selectedSessionId = null;
+        }
+        closeEventsModal();
+        closeDetailModal();
+        closeDeleteConfirm();
+        showToast(`Deleted agent ${selected?.title || deletingId}.`, "success");
+        await refresh();
+      }
+
+      document.getElementById("machine-select").addEventListener("change", (event) => {
+        createFormState.machineId = event.target.value;
+      });
+      document.getElementById("preset-select").addEventListener("change", (event) => {
+        createFormState.presetId = event.target.value;
+      });
+      document.getElementById("model-select").addEventListener("change", (event) => {
+        createFormState.modelId = event.target.value;
+      });
+      document.getElementById("open-events-button").addEventListener("click", () => {
+        openEventsModal().catch((error) => {
+          showToast(`Failed to load events: ${error.message}`, "error");
+        });
+      });
+      document.getElementById("open-detail-button").addEventListener("click", () => {
+        openDetailModal().catch((error) => {
+          showToast(`Failed to load details: ${error.message}`, "error");
+        });
+      });
+      document.getElementById("delete-agent-button").addEventListener("click", () => {
+        deleteAgent().catch((error) => {
+          showToast(`Delete failed: ${error.message}`, "error");
+        });
+      });
+      document.getElementById("confirm-delete-button").addEventListener("click", () => {
+        confirmDeleteAgent().catch((error) => {
+          showToast(`Delete failed: ${error.message}`, "error");
+        });
+      });
+      document.getElementById("cancel-delete-button").addEventListener("click", closeDeleteConfirm);
+      document.getElementById("close-delete-confirm-button").addEventListener("click", closeDeleteConfirm);
+      document.getElementById("close-events-button").addEventListener("click", closeEventsModal);
+      document.getElementById("close-detail-button").addEventListener("click", closeDetailModal);
+      document.getElementById("events-modal").addEventListener("click", (event) => {
+        if (event.target.id === "events-modal") {
+          closeEventsModal();
+        }
+      });
+      document.getElementById("detail-modal").addEventListener("click", (event) => {
+        if (event.target.id === "detail-modal") {
+          closeDetailModal();
+        }
+      });
+      document.getElementById("delete-confirm-modal").addEventListener("click", (event) => {
+        if (event.target.id === "delete-confirm-modal") {
+          closeDeleteConfirm();
+        }
+      });
+      document.getElementById("send-button").addEventListener("click", sendMessage);
+      document.getElementById("message-input").addEventListener("keydown", (event) => {
+        if (event.key === "Enter" && !event.shiftKey) {
+          event.preventDefault();
+          sendMessage().catch((error) => {
+            showToast(`Send failed: ${error.message}`, "error");
+          });
+        }
+      });
+      document.getElementById("create-session-button").addEventListener("click", createSession);
+      refresh().catch((error) => {
+        document.getElementById("session-detail").textContent = `Failed to load gateway data: ${error.message}`;
+        showToast(`Failed to load gateway data: ${error.message}`, "error");
+      });
+      setInterval(() => refresh().catch(() => {}), 3000);
+    </script>
+  </body>
+</html>
