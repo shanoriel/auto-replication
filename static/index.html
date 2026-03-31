@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -45,15 +45,17 @@
       /* ── Top Bar ── */
       .topbar {
         padding: 20px 24px 16px;
-        display: grid;
-        gap: 16px;
       }
 
       .masthead {
         display: flex;
         justify-content: space-between;
         gap: 20px;
-        align-items: end;
+        align-items: flex-start;
+      }
+
+      .masthead-copy {
+        min-width: 0;
       }
 
       .title {
@@ -75,8 +77,10 @@
 
       .status-strip {
         display: grid;
-        grid-template-columns: repeat(5, minmax(120px, 1fr));
-        gap: 10px;
+        grid-template-columns: repeat(5, minmax(100px, 1fr));
+        gap: 8px;
+        flex: 1 1 0;
+        min-width: 0;
       }
 
       .status-card, .surface {
@@ -87,11 +91,12 @@
       }
 
       .status-card {
-        padding: 12px 14px;
+        min-width: 0;
+        padding: 10px 11px;
       }
 
       .status-label {
-        font-size: 11px;
+        font-size: 10px;
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.06em;
@@ -99,14 +104,15 @@
       }
 
       .status-value {
-        margin-top: 6px;
-        font-size: 24px;
+        margin-top: 5px;
+        font-size: 20px;
         font-weight: 700;
+        line-height: 1.1;
       }
 
       .status-meta {
-        margin-top: 4px;
-        font-size: 12px;
+        margin-top: 3px;
+        font-size: 11px;
         color: var(--muted);
         line-height: 1.4;
       }
@@ -770,7 +776,12 @@
 
       /* ── Responsive ── */
       @media (max-width: 1260px) {
-        .status-strip { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+        .masthead { flex-direction: column; }
+        .status-strip {
+          width: 100%;
+          grid-template-columns: repeat(3, minmax(110px, 1fr));
+          justify-content: stretch;
+        }
         .board { grid-template-columns: 1fr; }
         .canvas-shell { min-height: 420px; }
       }
@@ -778,8 +789,8 @@
       @media (max-width: 720px) {
         .topbar, .workspace { padding-left: 12px; padding-right: 12px; }
         .task-bar { margin: 0 12px; flex-wrap: wrap; }
-        .masthead { flex-direction: column; align-items: start; }
-        .status-strip { grid-template-columns: 1fr; }
+        .masthead { align-items: start; }
+        .status-strip { grid-template-columns: 1fr 1fr; }
         .kv { grid-template-columns: 1fr; }
       }
     </style>
@@ -788,23 +799,23 @@
     <div class="app-shell">
       <section class="topbar">
         <div class="masthead">
-          <div>
+          <div class="masthead-copy">
             <h1 class="title">AutoReplication</h1>
             <div class="subtitle">
-              Task-centric control console for multi-agent research loops.
+              面向任务的多 Agent 研究闭环控制台。
             </div>
           </div>
+          <div id="status-strip" class="status-strip"></div>
         </div>
-        <div id="status-strip" class="status-strip"></div>
       </section>
 
       <section class="task-bar surface">
         <div class="grow">
-          <label for="task-select">Task</label>
+          <label for="task-select">任务</label>
           <select id="task-select"></select>
         </div>
-        <button id="new-task-button" class="primary-btn" type="button">New Task</button>
-        <button id="refresh-button" class="secondary-btn" type="button">Refresh</button>
+        <button id="new-task-button" class="primary-btn" type="button">新建任务</button>
+        <button id="refresh-button" class="secondary-btn" type="button">刷新</button>
       </section>
 
       <section class="workspace">
@@ -815,8 +826,8 @@
     <div id="drawer-backdrop" class="drawer-backdrop"></div>
     <aside id="detail-drawer" class="drawer" aria-hidden="true">
       <div class="drawer-header">
-        <strong id="drawer-title">Detail</strong>
-        <button id="close-drawer-button" class="secondary-btn" type="button">Close</button>
+        <strong id="drawer-title">详情</strong>
+        <button id="close-drawer-button" class="secondary-btn" type="button">关闭</button>
       </div>
       <div id="drawer-body" class="drawer-body"></div>
     </aside>
@@ -824,41 +835,41 @@
     <div id="task-modal-shell" class="modal-shell" aria-hidden="true">
       <div class="modal">
         <div class="modal-header">
-          <strong>Create Task</strong>
-          <button id="close-task-modal-button" class="secondary-btn" type="button">Close</button>
+          <strong>创建任务</strong>
+          <button id="close-task-modal-button" class="secondary-btn" type="button">关闭</button>
         </div>
         <div class="modal-body">
           <div class="form-grid">
             <label class="label">
-              Title
-              <input id="task-title" placeholder="Replicate a paper, trace a bug, or run a bounded experiment">
+              标题
+              <input id="task-title" placeholder="例如：复现论文、排查 bug，或执行一个有边界的实验">
             </label>
             <label class="label">
-              Entry Agent
+              入口 Agent
               <select id="task-entry-agent"></select>
             </label>
             <label class="label">
-              Objective
-              <textarea id="task-objective" placeholder="Describe the main goal of the task."></textarea>
+              目标
+              <textarea id="task-objective" placeholder="描述这个任务的主要目标。"></textarea>
             </label>
             <label class="label">
-              Initial Prompt
-              <textarea id="task-initial-input" placeholder="Tell the entry agent how to begin this task."></textarea>
+              初始提示词
+              <textarea id="task-initial-input" placeholder="告诉入口 Agent 应该如何开始这个任务。"></textarea>
             </label>
             <label class="label">
-              Operator Summary
-              <textarea id="task-summary" placeholder="Short operator-facing summary for the task header."></textarea>
+              操作员摘要
+              <textarea id="task-summary" placeholder="用于任务头部展示的简短摘要。"></textarea>
             </label>
             <div class="label">
-              Participant Agents
+              参与 Agent
               <div id="task-agent-checks" class="agent-checks"></div>
             </div>
             <div class="inline-actions">
-              <button id="create-task-button" class="primary-btn" type="button">Create Task</button>
+              <button id="create-task-button" class="primary-btn" type="button">创建任务</button>
               <span id="task-form-status" class="footnote"></span>
             </div>
             <div class="footnote">
-              Task creation is human-only. Dispatches are generated inside the system by agents, not manually from this screen.
+              任务只能由人工创建。Dispatch 由系统中的 Agent 自动生成，不在这个界面手动创建。
             </div>
           </div>
         </div>
@@ -908,13 +919,42 @@
       }
 
       function formatTime(value) {
-        if (!value) return "unset";
+        if (!value) return "未设置";
         const date = new Date(value);
         if (Number.isNaN(date.getTime())) return value;
         return date.toLocaleString([], {
           year: "numeric", month: "short", day: "numeric",
           hour: "2-digit", minute: "2-digit",
         });
+      }
+
+      function localizeStatus(status) {
+        const map = {
+          idle: "空闲",
+          busy: "忙碌",
+          working: "工作中",
+          active: "进行中",
+          running: "运行中",
+          pending: "待处理",
+          accepted: "已接收",
+          created: "已创建",
+          launching: "启动中",
+          replied: "已回复",
+          completed: "已完成",
+          failed: "失败",
+          fault: "故障",
+          offline: "离线",
+          error: "错误",
+        };
+        return map[status] || status || "未设置";
+      }
+
+      function localizeDispatchKind(kind) {
+        const map = {
+          "work-order": "工作单",
+          "clarification-request": "澄清请求",
+        };
+        return map[kind] || kind || "未设置";
       }
 
       function truncate(value, length = 96) {
@@ -932,14 +972,14 @@
 
       function elapsedSince(value) {
         const date = new Date(value);
-        if (Number.isNaN(date.getTime())) return "unknown";
+        if (Number.isNaN(date.getTime())) return "未知";
         const deltaMs = Date.now() - date.getTime();
         const minutes = Math.max(0, Math.floor(deltaMs / 60000));
-        if (minutes < 1) return "< 1 min";
-        if (minutes < 60) return `${minutes} min`;
+        if (minutes < 1) return "不到 1 分钟";
+        if (minutes < 60) return `${minutes} 分钟`;
         const hours = Math.floor(minutes / 60);
         const remain = minutes % 60;
-        return `${hours}h ${remain}m`;
+        return `${hours}小时 ${remain}分钟`;
       }
 
       async function fetchJson(path, options) {
@@ -1074,11 +1114,11 @@
         const overview = state.overview;
         if (!overview) { patchHtml(container, ""); return; }
         const cards = [
-          { label: "Gateway", value: overview.gateway.status.toUpperCase(), meta: `${overview.gateway.app} · port ${overview.gateway.port}` },
-          { label: "Runtimes", value: overview.runtimes.total, meta: `${overview.runtimes.by_status.idle || 0} idle · ${overview.runtimes.by_status.busy || 0} busy` },
-          { label: "Agents Working", value: overview.agents.working, meta: `${overview.agents.total} total agents` },
-          { label: "Tasks Running", value: overview.tasks.running, meta: `${overview.tasks.total} total tasks` },
-          { label: "Dispatches Waiting", value: overview.dispatches.waiting_reply, meta: `${overview.dispatches.total} total dispatches` },
+          { label: "Gateway", value: localizeStatus(overview.gateway.status), meta: `${overview.gateway.app} · 端口 ${overview.gateway.port}` },
+          { label: "Runtime", value: overview.runtimes.total, meta: `${overview.runtimes.by_status.idle || 0} 空闲 · ${overview.runtimes.by_status.busy || 0} 忙碌` },
+          { label: "工作中 Agent", value: overview.agents.working, meta: `共 ${overview.agents.total} 个 Agent` },
+          { label: "运行中任务", value: overview.tasks.running, meta: `共 ${overview.tasks.total} 个任务` },
+          { label: "等待中的 Dispatch", value: overview.dispatches.waiting_reply, meta: `共 ${overview.dispatches.total} 个 Dispatch` },
         ];
         patchHtml(container, cards.map(c => `
           <div class="status-card" id="sc-${escapeHtml(c.label.replace(/\s+/g, '-').toLowerCase())}">
@@ -1094,7 +1134,7 @@
         const select = document.getElementById("task-select");
         const tasks = state.tasks;
         if (!tasks.length) {
-          patchHtml(select, `<option value="">No tasks yet</option>`);
+          patchHtml(select, `<option value="">暂无任务</option>`);
           select.disabled = true;
           return;
         }
@@ -1127,7 +1167,7 @@
           ["pending", "accepted", "running"].includes(d.status)
         );
         if (rd) return truncate(rd.payload.title || rd.payload.goal || rd.payload.question || rd.kind, 80);
-        return "No active summary yet.";
+        return "暂无活动摘要。";
       }
 
       function normalizeStagePlan(task) {
@@ -1140,15 +1180,15 @@
       /* ── Render: Timeline ── */
       function renderTimeline(stages) {
         if (!stages.length) {
-          return `<div class="empty-state">No stage plan published for this task yet.</div>`;
+          return `<div class="empty-state">这个任务还没有发布阶段计划。</div>`;
         }
         return `<div class="timeline">${stages.map((s, i) => {
           const status = s.status || (i === 0 ? "active" : "pending");
           return `
             <article class="stage-card ${escapeHtml(status)}" id="stage-${i}">
-              <div class="stage-title">${escapeHtml(s.title || `Stage ${i + 1}`)}</div>
-              <div class="stage-meta">${escapeHtml((status).toUpperCase())}${s.updated_at ? ` · ${escapeHtml(formatTime(s.updated_at))}` : ""}</div>
-              <div class="stage-body">${escapeHtml(s.summary || s.description || "No summary yet.")}</div>
+              <div class="stage-title">${escapeHtml(s.title || `阶段 ${i + 1}`)}</div>
+              <div class="stage-meta">${escapeHtml(localizeStatus(status))}${s.updated_at ? ` · ${escapeHtml(formatTime(s.updated_at))}` : ""}</div>
+              <div class="stage-body">${escapeHtml(s.summary || s.description || "暂无摘要。")}</div>
             </article>
           `;
         }).join("")}</div>`;
@@ -1166,7 +1206,7 @@
         if (!agents.length) {
           return `
             <div class="panel-body"><div class="empty-state">
-              No active agents for this task yet.<br>Once dispatches or sessions start, the collaboration canvas will populate here.
+              当前任务还没有活跃 Agent。<br>当 Dispatch 或 Session 开始后，这里会显示协作画布。
             </div></div>
           `;
         }
@@ -1218,12 +1258,12 @@
           const left = (from.x + to.x) / 2;
           const top = (from.y + to.y) / 2 - 30;
           const startedAt = d.accepted_at || d.created_at;
-          const runningFor = startedAt ? elapsedSince(startedAt) : "just now";
+          const runningFor = startedAt ? elapsedSince(startedAt) : "刚刚";
           const label = d.payload.title || d.payload.goal || d.payload.question || d.kind;
           return `
             <button class="dispatch-card" style="left:${left}px;top:${top}px;" data-dispatch-id="${escapeHtml(d.id)}" data-from="${escapeHtml(d.from_agent_id)}" data-to="${escapeHtml(d.to_agent_id)}" type="button">
               <div class="dispatch-label">${escapeHtml(truncate(label, 40))}</div>
-              <div class="dispatch-meta">${escapeHtml(d.status)} · ${escapeHtml(runningFor)}</div>
+              <div class="dispatch-meta">${escapeHtml(localizeStatus(d.status))} · ${escapeHtml(runningFor)}</div>
             </button>
           `;
         }).join("");
@@ -1242,12 +1282,12 @@
         return `
           <div class="task-hero">
             <h2 class="task-hero-title">${escapeHtml(board.task.title)}</h2>
-            <div class="task-hero-meta">${escapeHtml(board.task.summary || board.task.objective || "No operator summary yet.")}</div>
+            <div class="task-hero-meta">${escapeHtml(board.task.summary || board.task.objective || "暂无操作员摘要。")}</div>
             <div class="task-counts">
-              <span class="chip">${escapeHtml(board.counts.participant_agents)} participants</span>
-              <span class="chip">${escapeHtml(board.counts.active_agents)} active</span>
-              <span class="chip">${escapeHtml(board.counts.open_dispatches)} dispatches</span>
-              <span class="chip">${escapeHtml(board.counts.running_sessions)} sessions</span>
+              <span class="chip">${escapeHtml(board.counts.participant_agents)} 个参与者</span>
+              <span class="chip">${escapeHtml(board.counts.active_agents)} 个活跃</span>
+              <span class="chip">${escapeHtml(board.counts.open_dispatches)} 个 Dispatch</span>
+              <span class="chip">${escapeHtml(board.counts.running_sessions)} 个 Session</span>
             </div>
           </div>
           <div class="panel-body canvas-shell">
@@ -1292,12 +1332,12 @@
                 </div>
                 <div class="activity-line spread">
                   <span class="activity-title">${escapeHtml(truncate(item.title, 40))}</span>
-                  <span class="activity-status ${escapeHtml(tone)}">${escapeHtml(item.status)}</span>
+                  <span class="activity-status ${escapeHtml(tone)}">${escapeHtml(localizeStatus(item.status))}</span>
                 </div>
               </button>
             `;
           }
-          const message = item.message || "System Activity";
+          const message = item.message || "系统活动";
           return `
             <button class="activity-card" type="button" ${item.agent_id ? `data-agent-id="${escapeHtml(item.agent_id)}"` : ""}>
               <div class="activity-line spread">
@@ -1309,17 +1349,17 @@
               </div>
             </button>
           `;
-        }).join("") : `<div class="empty-state">No task activity yet.</div>`;
+        }).join("") : `<div class="empty-state">暂无任务活动。</div>`;
 
         return `
           <section class="surface">
-            <div class="panel-header"><div class="panel-title">Task Agents</div></div>
+            <div class="panel-header"><div class="panel-title">任务 Agent</div></div>
             <div class="panel-body">
-              ${participants ? `<div class="agent-strip">${participants}</div>` : `<div class="empty-state">No participant agents yet.</div>`}
+              ${participants ? `<div class="agent-strip">${participants}</div>` : `<div class="empty-state">暂无参与 Agent。</div>`}
             </div>
           </section>
           <section class="surface">
-            <div class="panel-header"><div class="panel-title">Activity Summary</div></div>
+            <div class="panel-header"><div class="panel-title">活动摘要</div></div>
             <div class="panel-body">
               <div class="activity-feed">${feed}</div>
             </div>
@@ -1331,18 +1371,18 @@
       function renderBoard() {
         const container = document.getElementById("board");
         if (!state.selectedTaskId) {
-          patchHtml(container, `<section class="surface"><div class="panel-body"><div class="empty-state">Create a task to start the control loop.</div></div></section>`);
+          patchHtml(container, `<section class="surface"><div class="panel-body"><div class="empty-state">创建一个任务以启动控制闭环。</div></div></section>`);
           return;
         }
         if (!state.board) {
-          patchHtml(container, `<section class="surface"><div class="panel-body"><div class="empty-state">Loading task board...</div></div></section>`);
+          patchHtml(container, `<section class="surface"><div class="panel-body"><div class="empty-state">正在加载任务看板...</div></div></section>`);
           return;
         }
 
         const stages = normalizeStagePlan(state.board.task);
         patchHtml(container, `
           <section class="surface" id="timeline-panel">
-            <div class="panel-header"><div class="panel-title">Stage Timeline</div></div>
+            <div class="panel-header"><div class="panel-title">阶段时间线</div></div>
             <div class="panel-body">${renderTimeline(stages)}</div>
           </section>
           <section class="surface" id="canvas-panel">
@@ -1512,20 +1552,20 @@
             <h3 class="detail-title">Agent</h3>
             <div class="kv">
               <strong>ID</strong><span>${escapeHtml(agent.id)}</span>
-              <strong>Status</strong><span>${escapeHtml(agent.status || "idle")}</span>
-              <strong>Runtime</strong><span>${escapeHtml(agent.runtime_id || "unassigned")}</span>
-              <strong>Role</strong><span>${escapeHtml(agent.role || "unset")}</span>
+              <strong>状态</strong><span>${escapeHtml(localizeStatus(agent.status || "idle"))}</span>
+              <strong>Runtime</strong><span>${escapeHtml(agent.runtime_id || "未分配")}</span>
+              <strong>角色</strong><span>${escapeHtml(agent.role || "未设置")}</span>
             </div>
           </div>
           <div class="detail-block">
-            <h3 class="detail-title">Current Task Scope</h3>
+            <h3 class="detail-title">当前任务范围</h3>
             <div class="kv">
-              <strong>Sessions</strong><span>${escapeHtml(sessions.length)}</span>
-              <strong>Dispatches</strong><span>${escapeHtml(dispatches.length)}</span>
+              <strong>Session 数</strong><span>${escapeHtml(sessions.length)}</span>
+              <strong>Dispatch 数</strong><span>${escapeHtml(dispatches.length)}</span>
             </div>
           </div>
           <div class="detail-block">
-            <h3 class="detail-title">Latest Summary</h3>
+            <h3 class="detail-title">最新摘要</h3>
             <div>${escapeHtml(agent.summary || agentSummary(agent, board || { sessions: [], dispatches: [] }))}</div>
           </div>
         `);
@@ -1539,21 +1579,21 @@
             <h3 class="detail-title">Dispatch</h3>
             <div class="kv">
               <strong>ID</strong><span>${escapeHtml(dispatch.id)}</span>
-              <strong>Kind</strong><span>${escapeHtml(dispatch.kind)}</span>
-              <strong>Status</strong><span>${escapeHtml(dispatch.status)}</span>
-              <strong>From</strong><span>${escapeHtml(dispatch.from_agent_id)}</span>
-              <strong>To</strong><span>${escapeHtml(dispatch.to_agent_id)}</span>
-              <strong>Created</strong><span>${escapeHtml(formatTime(dispatch.created_at))}</span>
-              <strong>Resolved</strong><span>${escapeHtml(formatTime(dispatch.resolved_at))}</span>
+              <strong>类型</strong><span>${escapeHtml(localizeDispatchKind(dispatch.kind))}</span>
+              <strong>状态</strong><span>${escapeHtml(localizeStatus(dispatch.status))}</span>
+              <strong>来源</strong><span>${escapeHtml(dispatch.from_agent_id)}</span>
+              <strong>目标</strong><span>${escapeHtml(dispatch.to_agent_id)}</span>
+              <strong>创建时间</strong><span>${escapeHtml(formatTime(dispatch.created_at))}</span>
+              <strong>完成时间</strong><span>${escapeHtml(formatTime(dispatch.resolved_at))}</span>
             </div>
           </div>
           <div class="detail-block">
-            <h3 class="detail-title">Payload</h3>
+            <h3 class="detail-title">Payload 内容</h3>
             <div class="mono">${escapeHtml(JSON.stringify(dispatch.payload, null, 2))}</div>
           </div>
           <div class="detail-block">
-            <h3 class="detail-title">Reply</h3>
-            <div class="mono">${escapeHtml(dispatch.reply ? JSON.stringify(dispatch.reply, null, 2) : "No reply yet.")}</div>
+            <h3 class="detail-title">回复</h3>
+            <div class="mono">${escapeHtml(dispatch.reply ? JSON.stringify(dispatch.reply, null, 2) : "暂无回复。")}</div>
           </div>
         `);
       }
@@ -1567,19 +1607,19 @@
             <div class="kv">
               <strong>ID</strong><span>${escapeHtml(session.id)}</span>
               <strong>Agent</strong><span>${escapeHtml(session.agent_id)}</span>
-              <strong>Status</strong><span>${escapeHtml(session.status)}</span>
-              <strong>Dispatch</strong><span>${escapeHtml(session.dispatch_id || "unset")}</span>
-              <strong>Preset</strong><span>${escapeHtml(session.preset_id || "unset")}</span>
-              <strong>Model</strong><span>${escapeHtml(session.model || "unset")}</span>
+              <strong>状态</strong><span>${escapeHtml(localizeStatus(session.status))}</span>
+              <strong>Dispatch</strong><span>${escapeHtml(session.dispatch_id || "未设置")}</span>
+              <strong>Preset</strong><span>${escapeHtml(session.preset_id || "未设置")}</span>
+              <strong>Model</strong><span>${escapeHtml(session.model || "未设置")}</span>
             </div>
           </div>
           <div class="detail-block">
-            <h3 class="detail-title">Summary</h3>
-            <div>${escapeHtml(session.summary || "No session summary yet.")}</div>
+            <h3 class="detail-title">摘要</h3>
+            <div>${escapeHtml(session.summary || "暂无 Session 摘要。")}</div>
           </div>
           <div class="detail-block">
             <h3 class="detail-title">Steering</h3>
-            <div class="footnote">Session-level steering entry point will be wired in the next UI step.</div>
+            <div class="footnote">Session 级 Steering 入口会在下一步 UI 中接入。</div>
           </div>
         `);
       }
@@ -1629,11 +1669,11 @@
         const status = document.getElementById("task-form-status");
 
         if (!title || !entryAgentId || !initialInput) {
-          status.textContent = "Title, entry agent, and initial prompt are required.";
+          status.textContent = "标题、入口 Agent 和初始提示词为必填项。";
           return;
         }
 
-        status.textContent = "Creating...";
+        status.textContent = "创建中...";
         captureTaskDraft();
         try {
           const task = await fetchJson("/api/tasks", {
@@ -1649,16 +1689,16 @@
               summary: summary || null,
               stage_plan: {
                 stages: [{
-                  title: "Task created",
+                  title: "任务已创建",
                   status: "active",
-                  summary: "Initial task shell created by operator.",
+                  summary: "由操作员创建了初始任务框架。",
                   updated_at: new Date().toISOString(),
                 }],
               },
             }),
           });
           state.selectedTaskId = task.id;
-          status.textContent = "Task created.";
+          status.textContent = "任务已创建。";
           closeTaskModal();
           await refreshAll();
         } catch (error) {
@@ -1710,7 +1750,7 @@
       boot().catch((error) => {
         document.getElementById("board").innerHTML = `
           <section class="surface"><div class="panel-body">
-            <div class="empty-state">Failed to load UI: ${escapeHtml(error.message)}</div>
+            <div class="empty-state">UI 加载失败：${escapeHtml(error.message)}</div>
           </div></section>
         `;
       });
