@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -46,15 +47,24 @@ class AgentHeartbeat(BaseModel):
 
 class TaskCreate(BaseModel):
     title: str
-    created_by: str
+    created_by: Literal["human"] = "human"
+    entry_agent_id: str
+    participant_agent_ids: list[str] = Field(default_factory=list)
+    objective: str
+    initial_input: str | None = None
     status: str = "created"
     summary: str | None = None
+    stage_plan: dict[str, Any] = Field(default_factory=dict)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class TaskUpdate(BaseModel):
     status: str | None = None
     summary: str | None = None
+    entry_agent_id: str | None = None
+    participant_agent_ids: list[str] | None = None
+    objective: str | None = None
+    stage_plan: dict[str, Any] | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -66,11 +76,13 @@ class DispatchCreate(BaseModel):
     parent_dispatch_id: str | None = None
     status: str = "pending"
     payload: dict[str, Any] = Field(default_factory=dict)
+    reply: dict[str, Any] | None = None
 
 
 class DispatchUpdate(BaseModel):
     status: str | None = None
     payload: dict[str, Any] = Field(default_factory=dict)
+    reply: dict[str, Any] | None = None
     session_id: str | None = None
     accepted: bool | None = None
     resolved: bool | None = None
@@ -82,21 +94,28 @@ class SessionCreate(BaseModel):
     task_id: str | None = None
     dispatch_id: str | None = None
     title: str
+    session_key: str | None = None
     role: str | None = None
     workspace_path: str | None = None
     codex_home: str | None = None
     status: str = "created"
+    lifecycle_status: str | None = None
     summary: str | None = None
     machine_id: str | None = None
     preset_id: str | None = None
     model: str | None = None
+    backend_kind: str = "codex"
+    backend_session_id: str | None = None
     initial_prompt: str | None = None
+    initial_input: str | None = None
 
 
 class SessionUpdate(BaseModel):
     status: str | None = None
+    lifecycle_status: str | None = None
     summary: str | None = None
     codex_thread_id: str | None = None
+    backend_session_id: str | None = None
 
 
 class SessionClaim(BaseModel):
@@ -119,3 +138,19 @@ class MessageCreate(BaseModel):
 
 class MessageAck(BaseModel):
     status: str = "delivered"
+
+
+class SessionInputCreate(BaseModel):
+    content: str
+    kind: str = "message"
+    sender: str = "operator"
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class SessionInputUpdate(BaseModel):
+    status: str
+    error_text: str | None = None
+
+
+class RuntimeInboxUpdate(BaseModel):
+    status: str

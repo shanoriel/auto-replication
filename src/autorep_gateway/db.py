@@ -12,6 +12,14 @@ def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+class ClosingConnection(sqlite3.Connection):
+    def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
+        try:
+            return super().__exit__(exc_type, exc_val, exc_tb)
+        finally:
+            self.close()
+
+
 def dict_factory(cursor: sqlite3.Cursor, row: tuple[Any, ...]) -> dict[str, Any]:
     result: dict[str, Any] = {}
     for index, column in enumerate(cursor.description):
@@ -30,7 +38,7 @@ class GatewayDB:
         self._init_db()
 
     def connect(self) -> sqlite3.Connection:
-        connection = sqlite3.connect(self.path)
+        connection = sqlite3.connect(self.path, factory=ClosingConnection)
         connection.row_factory = dict_factory
         return connection
 
@@ -78,10 +86,15 @@ class GatewayDB:
                     title TEXT NOT NULL,
                     status TEXT NOT NULL,
                     created_by TEXT NOT NULL,
+                    entry_agent_id TEXT,
+                    participant_agents_json TEXT NOT NULL,
+                    objective TEXT,
                     summary TEXT,
+                    stage_plan_json TEXT NOT NULL,
                     metadata_json TEXT NOT NULL,
                     created_at TEXT NOT NULL,
-                    updated_at TEXT NOT NULL
+                    updated_at TEXT NOT NULL,
+                    FOREIGN KEY(entry_agent_id) REFERENCES agents(id)
                 );
 
                 CREATE TABLE IF NOT EXISTS dispatches (
@@ -93,6 +106,7 @@ class GatewayDB:
                     to_agent_id TEXT NOT NULL,
                     parent_dispatch_id TEXT,
                     payload_json TEXT NOT NULL,
+                    reply_json TEXT,
                     session_id TEXT,
                     accepted_at TEXT,
                     resolved_at TEXT,
@@ -110,16 +124,24 @@ class GatewayDB:
                     task_id TEXT,
                     dispatch_id TEXT,
                     title TEXT NOT NULL,
+                    session_key TEXT,
                     role TEXT,
                     status TEXT NOT NULL,
+                    lifecycle_status TEXT,
                     summary TEXT,
                     workspace_path TEXT,
                     codex_home TEXT,
                     codex_thread_id TEXT,
+                    backend_kind TEXT,
+                    backend_session_id TEXT,
                     machine_id TEXT,
                     preset_id TEXT,
                     model TEXT,
                     initial_prompt TEXT,
+                    last_input_at TEXT,
+                    last_output_at TEXT,
+                    closed_at TEXT,
+                    close_reason TEXT,
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL,
                     last_event_at TEXT,
@@ -154,6 +176,38 @@ class GatewayDB:
                     FOREIGN KEY(session_id) REFERENCES sessions(id),
                     FOREIGN KEY(agent_id) REFERENCES agents(id)
                 );
+
+                CREATE TABLE IF NOT EXISTS session_inputs (
+                    id TEXT PRIMARY KEY,
+                    session_id TEXT NOT NULL,
+                    runtime_id TEXT NOT NULL,
+                    agent_id TEXT NOT NULL,
+                    kind TEXT NOT NULL,
+                    sender TEXT NOT NULL,
+                    payload_json TEXT NOT NULL,
+                    metadata_json TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    error_text TEXT,
+                    created_at TEXT NOT NULL,
+                    delivered_at TEXT,
+                    processed_at TEXT,
+                    FOREIGN KEY(session_id) REFERENCES sessions(id),
+                    FOREIGN KEY(runtime_id) REFERENCES runtimes(id),
+                    FOREIGN KEY(agent_id) REFERENCES agents(id)
+                );
+
+                CREATE TABLE IF NOT EXISTS runtime_inbox (
+                    id TEXT PRIMARY KEY,
+                    runtime_id TEXT NOT NULL,
+                    kind TEXT NOT NULL,
+                    dispatch_id TEXT NOT NULL,
+                    payload_json TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    processed_at TEXT,
+                    FOREIGN KEY(runtime_id) REFERENCES runtimes(id),
+                    FOREIGN KEY(dispatch_id) REFERENCES dispatches(id)
+                );
                 """
             )
             self._ensure_columns(connection)
@@ -169,8 +223,19 @@ class GatewayDB:
         )
         self._ensure_table_columns(
             connection,
+            "tasks",
+            {
+                "entry_agent_id": "TEXT",
+                "participant_agents_json": "TEXT NOT NULL DEFAULT '[]'",
+                "objective": "TEXT",
+                "stage_plan_json": "TEXT NOT NULL DEFAULT '{}'",
+            },
+        )
+        self._ensure_table_columns(
+            connection,
             "sessions",
             {
+                "session_key": "TEXT",
                 "machine_id": "TEXT",
                 "preset_id": "TEXT",
                 "model": "TEXT",
@@ -178,6 +243,20 @@ class GatewayDB:
                 "runtime_id": "TEXT",
                 "task_id": "TEXT",
                 "dispatch_id": "TEXT",
+                "lifecycle_status": "TEXT",
+                "backend_kind": "TEXT",
+                "backend_session_id": "TEXT",
+                "last_input_at": "TEXT",
+                "last_output_at": "TEXT",
+                "closed_at": "TEXT",
+                "close_reason": "TEXT",
+            },
+        )
+        self._ensure_table_columns(
+            connection,
+            "dispatches",
+            {
+                "reply_json": "TEXT",
             },
         )
 
@@ -407,8 +486,12 @@ class GatewayDB:
         *,
         title: str,
         created_by: str,
+        entry_agent_id: str,
+        participant_agent_ids: list[str],
+        objective: str,
         status: str,
         summary: str | None,
+        stage_plan: dict[str, Any],
         metadata: dict[str, Any],
     ) -> dict[str, Any]:
         record_id = str(uuid.uuid4())
@@ -416,10 +499,26 @@ class GatewayDB:
         with self.connect() as connection:
             connection.execute(
                 """
-                INSERT INTO tasks (id, title, status, created_by, summary, metadata_json, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO tasks (
+                    id, title, status, created_by, entry_agent_id, participant_agents_json,
+                    objective, summary, stage_plan_json, metadata_json, created_at, updated_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                (record_id, title, status, created_by, summary, _json_dumps(metadata), now, now),
+                (
+                    record_id,
+                    title,
+                    status,
+                    created_by,
+                    entry_agent_id,
+                    _json_dumps({"agent_ids": participant_agent_ids}),
+                    objective,
+                    summary,
+                    _json_dumps(stage_plan),
+                    _json_dumps(metadata),
+                    now,
+                    now,
+                ),
             )
         return self.get_task(record_id)
 
@@ -441,6 +540,10 @@ class GatewayDB:
         *,
         status: str | None = None,
         summary: str | None = None,
+        entry_agent_id: str | None = None,
+        participant_agent_ids: list[str] | None = None,
+        objective: str | None = None,
+        stage_plan: dict[str, Any] | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any] | None:
         current = self.get_task(task_id)
@@ -448,6 +551,14 @@ class GatewayDB:
             return None
         next_status = status or current["status"]
         next_summary = summary if summary is not None else current["summary"]
+        next_entry_agent_id = entry_agent_id if entry_agent_id is not None else current["entry_agent_id"]
+        next_participant_agent_ids = (
+            participant_agent_ids
+            if participant_agent_ids is not None
+            else list(current["participant_agent_ids"])
+        )
+        next_objective = objective if objective is not None else current["objective"]
+        next_stage_plan = stage_plan if stage_plan is not None else dict(current["stage_plan"])
         next_metadata = dict(current["metadata"])
         if metadata:
             next_metadata.update(metadata)
@@ -456,10 +567,21 @@ class GatewayDB:
             connection.execute(
                 """
                 UPDATE tasks
-                SET status = ?, summary = ?, metadata_json = ?, updated_at = ?
+                SET status = ?, summary = ?, entry_agent_id = ?, participant_agents_json = ?,
+                    objective = ?, stage_plan_json = ?, metadata_json = ?, updated_at = ?
                 WHERE id = ?
                 """,
-                (next_status, next_summary, _json_dumps(next_metadata), now, task_id),
+                (
+                    next_status,
+                    next_summary,
+                    next_entry_agent_id,
+                    _json_dumps({"agent_ids": next_participant_agent_ids}),
+                    next_objective,
+                    _json_dumps(next_stage_plan),
+                    _json_dumps(next_metadata),
+                    now,
+                    task_id,
+                ),
             )
         return self.get_task(task_id)
 
@@ -473,6 +595,7 @@ class GatewayDB:
         to_agent_id: str,
         parent_dispatch_id: str | None,
         payload: dict[str, Any],
+        reply: dict[str, Any] | None,
     ) -> dict[str, Any]:
         record_id = str(uuid.uuid4())
         now = utc_now()
@@ -481,8 +604,8 @@ class GatewayDB:
                 """
                 INSERT INTO dispatches (
                     id, task_id, kind, status, from_agent_id, to_agent_id, parent_dispatch_id,
-                    payload_json, session_id, accepted_at, resolved_at, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    payload_json, reply_json, session_id, accepted_at, resolved_at, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     record_id,
@@ -493,6 +616,7 @@ class GatewayDB:
                     to_agent_id,
                     parent_dispatch_id,
                     _json_dumps(payload),
+                    _json_dumps(reply) if reply is not None else None,
                     None,
                     None,
                     None,
@@ -505,12 +629,16 @@ class GatewayDB:
     def list_dispatches(
         self,
         *,
+        from_agent_id: str | None = None,
         to_agent_id: str | None = None,
         task_id: str | None = None,
         status: str | None = None,
     ) -> list[dict[str, Any]]:
         query = "SELECT * FROM dispatches WHERE 1 = 1"
         params: list[Any] = []
+        if from_agent_id is not None:
+            query += " AND from_agent_id = ?"
+            params.append(from_agent_id)
         if to_agent_id is not None:
             query += " AND to_agent_id = ?"
             params.append(to_agent_id)
@@ -560,6 +688,7 @@ class GatewayDB:
         *,
         status: str | None = None,
         payload: dict[str, Any] | None = None,
+        reply: dict[str, Any] | None = None,
         session_id: str | None = None,
         accepted: bool | None = None,
         resolved: bool | None = None,
@@ -571,6 +700,9 @@ class GatewayDB:
         next_payload = dict(current["payload"])
         if payload:
             next_payload.update(payload)
+        next_reply = dict(current["reply"]) if current["reply"] is not None else None
+        if reply is not None:
+            next_reply = reply
         next_session_id = session_id if session_id is not None else current["session_id"]
         accepted_at = current["accepted_at"]
         resolved_at = current["resolved_at"]
@@ -583,12 +715,13 @@ class GatewayDB:
             connection.execute(
                 """
                 UPDATE dispatches
-                SET status = ?, payload_json = ?, session_id = ?, accepted_at = ?, resolved_at = ?, updated_at = ?
+                SET status = ?, payload_json = ?, reply_json = ?, session_id = ?, accepted_at = ?, resolved_at = ?, updated_at = ?
                 WHERE id = ?
                 """,
                 (
                     next_status,
                     _json_dumps(next_payload),
+                    _json_dumps(next_reply) if next_reply is not None else None,
                     next_session_id,
                     accepted_at,
                     resolved_at,
@@ -596,7 +729,51 @@ class GatewayDB:
                     dispatch_id,
                 ),
             )
+            if next_status in {"replied", "failed"} and next_reply is not None and current["status"] != next_status:
+                origin_agent = self.get_agent(current["from_agent_id"])
+                if origin_agent is not None and origin_agent.get("runtime_id"):
+                    self._create_runtime_inbox_entry(
+                        connection,
+                        runtime_id=str(origin_agent["runtime_id"]),
+                        kind="dispatch_reply",
+                        dispatch_id=dispatch_id,
+                        payload={
+                            "dispatch_id": dispatch_id,
+                            "kind": current["kind"],
+                            "status": next_status,
+                            "reply": next_reply,
+                            "from_agent_id": current["from_agent_id"],
+                            "to_agent_id": current["to_agent_id"],
+                        },
+                    )
         return self.get_dispatch(dispatch_id)
+
+    def _create_runtime_inbox_entry(
+        self,
+        connection: sqlite3.Connection,
+        *,
+        runtime_id: str,
+        kind: str,
+        dispatch_id: str,
+        payload: dict[str, Any],
+    ) -> None:
+        connection.execute(
+            """
+            INSERT INTO runtime_inbox (
+                id, runtime_id, kind, dispatch_id, payload_json, status, created_at, processed_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                str(uuid.uuid4()),
+                runtime_id,
+                kind,
+                dispatch_id,
+                _json_dumps(payload),
+                "pending",
+                utc_now(),
+                None,
+            ),
+        )
 
     def create_session(
         self,
@@ -606,26 +783,45 @@ class GatewayDB:
         task_id: str | None,
         dispatch_id: str | None,
         title: str,
+        session_key: str | None,
         role: str | None,
         status: str,
+        lifecycle_status: str | None,
         summary: str | None,
         workspace_path: str | None,
         codex_home: str | None,
+        backend_kind: str | None,
+        backend_session_id: str | None,
         machine_id: str | None,
         preset_id: str | None,
         model: str | None,
         initial_prompt: str | None,
     ) -> dict[str, Any]:
+        if runtime_id and session_key:
+            with self.connect() as connection:
+                existing = connection.execute(
+                    """
+                    SELECT * FROM sessions
+                    WHERE runtime_id = ? AND session_key = ? AND status != 'terminated'
+                    ORDER BY created_at DESC
+                    LIMIT 1
+                    """,
+                    (runtime_id, session_key),
+                ).fetchone()
+            if existing is not None:
+                return self._decode_session(existing)
         record_id = str(uuid.uuid4())
         now = utc_now()
         with self.connect() as connection:
             connection.execute(
                 """
                 INSERT INTO sessions (
-                    id, agent_id, runtime_id, task_id, dispatch_id, title, role, status, summary,
-                    workspace_path, codex_home, codex_thread_id, machine_id, preset_id, model,
-                    initial_prompt, created_at, updated_at, last_event_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    id, agent_id, runtime_id, task_id, dispatch_id, title, session_key, role, status,
+                    lifecycle_status, summary, workspace_path, codex_home, codex_thread_id,
+                    backend_kind, backend_session_id, machine_id, preset_id, model, initial_prompt,
+                    last_input_at, last_output_at, closed_at, close_reason, created_at, updated_at,
+                    last_event_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     record_id,
@@ -634,16 +830,24 @@ class GatewayDB:
                     task_id,
                     dispatch_id,
                     title,
+                    session_key,
                     role,
                     status,
+                    lifecycle_status or status,
                     summary,
                     workspace_path,
                     codex_home,
                     None,
+                    backend_kind,
+                    backend_session_id,
                     machine_id,
                     preset_id,
                     model,
                     initial_prompt,
+                    None,
+                    None,
+                    None,
+                    None,
                     now,
                     now,
                     None,
@@ -656,24 +860,43 @@ class GatewayDB:
         session_id: str,
         *,
         status: str | None,
+        lifecycle_status: str | None,
         summary: str | None,
         codex_thread_id: str | None,
+        backend_session_id: str | None,
     ) -> dict[str, Any] | None:
         current = self.get_session(session_id)
         if current is None:
             return None
         now = utc_now()
         next_status = status or current["status"]
+        next_lifecycle_status = lifecycle_status or current["lifecycle_status"]
         next_summary = summary if summary is not None else current["summary"]
         next_thread_id = codex_thread_id if codex_thread_id is not None else current["codex_thread_id"]
+        next_backend_session_id = (
+            backend_session_id if backend_session_id is not None else current["backend_session_id"]
+        )
+        closed_at = current["closed_at"]
+        if next_status == "terminated" and closed_at is None:
+            closed_at = now
         with self.connect() as connection:
             connection.execute(
                 """
                 UPDATE sessions
-                SET status = ?, summary = ?, codex_thread_id = ?, updated_at = ?
+                SET status = ?, lifecycle_status = ?, summary = ?, codex_thread_id = ?,
+                    backend_session_id = ?, closed_at = ?, updated_at = ?
                 WHERE id = ?
                 """,
-                (next_status, next_summary, next_thread_id, now, session_id),
+                (
+                    next_status,
+                    next_lifecycle_status,
+                    next_summary,
+                    next_thread_id,
+                    next_backend_session_id,
+                    closed_at,
+                    now,
+                    session_id,
+                ),
             )
         return self.get_session(session_id)
 
@@ -719,23 +942,45 @@ class GatewayDB:
                 repaired += 1
         return repaired
 
-    def list_sessions(self) -> list[dict[str, Any]]:
+    def list_sessions(
+        self,
+        *,
+        task_id: str | None = None,
+        agent_id: str | None = None,
+        dispatch_id: str | None = None,
+        status: str | None = None,
+    ) -> list[dict[str, Any]]:
+        query = "SELECT * FROM sessions WHERE 1 = 1"
+        params: list[Any] = []
+        if task_id is not None:
+            query += " AND task_id = ?"
+            params.append(task_id)
+        if agent_id is not None:
+            query += " AND agent_id = ?"
+            params.append(agent_id)
+        if dispatch_id is not None:
+            query += " AND dispatch_id = ?"
+            params.append(dispatch_id)
+        if status is not None:
+            query += " AND status = ?"
+            params.append(status)
+        query += " ORDER BY updated_at DESC, created_at DESC"
         with self.connect() as connection:
-            return connection.execute(
-                "SELECT * FROM sessions ORDER BY updated_at DESC, created_at DESC"
-            ).fetchall()
+            rows = connection.execute(query, tuple(params)).fetchall()
+        return [self._decode_session(row) for row in rows]
 
     def list_sessions_by_status(self, statuses: list[str]) -> list[dict[str, Any]]:
         placeholders = ",".join("?" for _ in statuses)
         with self.connect() as connection:
-            return connection.execute(
+            rows = connection.execute(
                 f"SELECT * FROM sessions WHERE status IN ({placeholders}) ORDER BY updated_at ASC, created_at ASC",
                 tuple(statuses),
             ).fetchall()
+        return [self._decode_session(row) for row in rows]
 
     def list_runtime_launch_queue(self, runtime_id: str) -> list[dict[str, Any]]:
         with self.connect() as connection:
-            return connection.execute(
+            rows = connection.execute(
                 """
                 SELECT * FROM sessions
                 WHERE runtime_id = ? AND status = 'created'
@@ -743,18 +988,21 @@ class GatewayDB:
                 """,
                 (runtime_id,),
             ).fetchall()
+        return [self._decode_session(row) for row in rows]
 
     def get_session(self, session_id: str) -> dict[str, Any] | None:
         with self.connect() as connection:
-            return connection.execute(
+            row = connection.execute(
                 "SELECT * FROM sessions WHERE id = ?",
                 (session_id,),
             ).fetchone()
+        return self._decode_session(row) if row else None
 
     def delete_session(self, session_id: str) -> bool:
         with self.connect() as connection:
             connection.execute("DELETE FROM events WHERE session_id = ?", (session_id,))
             connection.execute("DELETE FROM messages WHERE session_id = ?", (session_id,))
+            connection.execute("DELETE FROM session_inputs WHERE session_id = ?", (session_id,))
             cursor = connection.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
             return cursor.rowcount > 0
 
@@ -829,7 +1077,153 @@ class GatewayDB:
                     delivered_at,
                 ),
             )
+            if direction == "inbound":
+                connection.execute(
+                    "UPDATE sessions SET last_output_at = ?, updated_at = ? WHERE id = ?",
+                    (now, now, session_id),
+                )
         return self.list_messages(session_id=session_id, limit=1)[0]
+
+    def add_session_input(
+        self,
+        *,
+        session_id: str,
+        runtime_id: str,
+        agent_id: str,
+        kind: str,
+        sender: str,
+        payload: dict[str, Any],
+        metadata: dict[str, Any],
+    ) -> dict[str, Any]:
+        record_id = str(uuid.uuid4())
+        now = utc_now()
+        with self.connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO session_inputs (
+                    id, session_id, runtime_id, agent_id, kind, sender, payload_json,
+                    metadata_json, status, error_text, created_at, delivered_at, processed_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    record_id,
+                    session_id,
+                    runtime_id,
+                    agent_id,
+                    kind,
+                    sender,
+                    _json_dumps(payload),
+                    _json_dumps(metadata),
+                    "pending",
+                    None,
+                    now,
+                    None,
+                    None,
+                ),
+            )
+            connection.execute(
+                "UPDATE sessions SET last_input_at = ?, updated_at = ? WHERE id = ?",
+                (now, now, session_id),
+            )
+        return self.get_session_input(record_id)
+
+    def list_runtime_session_inputs(
+        self,
+        runtime_id: str,
+        *,
+        status: str = "pending",
+    ) -> list[dict[str, Any]]:
+        with self.connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT * FROM session_inputs
+                WHERE runtime_id = ? AND status = ?
+                ORDER BY created_at ASC
+                """,
+                (runtime_id, status),
+            ).fetchall()
+        return [self._decode_session_input(row) for row in rows]
+
+    def get_session_input(self, session_input_id: str) -> dict[str, Any] | None:
+        with self.connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM session_inputs WHERE id = ?",
+                (session_input_id,),
+            ).fetchone()
+        return self._decode_session_input(row) if row else None
+
+    def update_session_input(
+        self,
+        session_input_id: str,
+        *,
+        status: str,
+        error_text: str | None = None,
+    ) -> dict[str, Any] | None:
+        current = self.get_session_input(session_input_id)
+        if current is None:
+            return None
+        now = utc_now()
+        delivered_at = current["delivered_at"]
+        processed_at = current["processed_at"]
+        if status == "delivered" and delivered_at is None:
+            delivered_at = now
+        if status in {"processed", "failed"}:
+            processed_at = now
+            if delivered_at is None:
+                delivered_at = now
+        with self.connect() as connection:
+            connection.execute(
+                """
+                UPDATE session_inputs
+                SET status = ?, error_text = ?, delivered_at = ?, processed_at = ?
+                WHERE id = ?
+                """,
+                (status, error_text, delivered_at, processed_at, session_input_id),
+            )
+        return self.get_session_input(session_input_id)
+
+    def list_runtime_inbox(
+        self,
+        runtime_id: str,
+        *,
+        status: str = "pending",
+    ) -> list[dict[str, Any]]:
+        with self.connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT * FROM runtime_inbox
+                WHERE runtime_id = ? AND status = ?
+                ORDER BY created_at ASC
+                """,
+                (runtime_id, status),
+            ).fetchall()
+        return [self._decode_runtime_inbox(row) for row in rows]
+
+    def get_runtime_inbox_item(self, item_id: str) -> dict[str, Any] | None:
+        with self.connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM runtime_inbox WHERE id = ?",
+                (item_id,),
+            ).fetchone()
+        return self._decode_runtime_inbox(row) if row else None
+
+    def update_runtime_inbox_item(self, item_id: str, *, status: str) -> dict[str, Any] | None:
+        current = self.get_runtime_inbox_item(item_id)
+        if current is None:
+            return None
+        processed_at = current["processed_at"]
+        if status == "processed":
+            processed_at = utc_now()
+        with self.connect() as connection:
+            connection.execute(
+                """
+                UPDATE runtime_inbox
+                SET status = ?, processed_at = ?
+                WHERE id = ?
+                """,
+                (status, processed_at, item_id),
+            )
+        return self.get_runtime_inbox_item(item_id)
 
     def ack_message(self, message_id: str, status: str) -> dict[str, Any] | None:
         now = utc_now()
@@ -899,15 +1293,38 @@ class GatewayDB:
 
     def _decode_task(self, row: dict[str, Any]) -> dict[str, Any]:
         decoded = dict(row)
-        decoded["metadata"] = json.loads(decoded.pop("metadata_json"))
+        participant_raw = decoded.pop("participant_agents_json", "[]") or "[]"
+        participant_agents = json.loads(participant_raw)
+        if isinstance(participant_agents, dict):
+            decoded["participant_agent_ids"] = participant_agents.get("agent_ids", [])
+        else:
+            decoded["participant_agent_ids"] = participant_agents
+        decoded["stage_plan"] = json.loads(decoded.pop("stage_plan_json", "{}") or "{}")
+        decoded["metadata"] = json.loads(decoded.pop("metadata_json") or "{}")
         return decoded
 
     def _decode_dispatch(self, row: dict[str, Any]) -> dict[str, Any]:
         decoded = dict(row)
-        decoded["payload"] = json.loads(decoded.pop("payload_json"))
+        decoded["payload"] = json.loads(decoded.pop("payload_json") or "{}")
+        reply_json = decoded.pop("reply_json", None)
+        decoded["reply"] = json.loads(reply_json) if reply_json else None
         return decoded
+
+    def _decode_session(self, row: dict[str, Any]) -> dict[str, Any]:
+        return dict(row)
 
     def _decode_event(self, row: dict[str, Any]) -> dict[str, Any]:
         decoded = dict(row)
         decoded["payload"] = json.loads(decoded.pop("payload_json"))
+        return decoded
+
+    def _decode_session_input(self, row: dict[str, Any]) -> dict[str, Any]:
+        decoded = dict(row)
+        decoded["payload"] = json.loads(decoded.pop("payload_json") or "{}")
+        decoded["metadata"] = json.loads(decoded.pop("metadata_json") or "{}")
+        return decoded
+
+    def _decode_runtime_inbox(self, row: dict[str, Any]) -> dict[str, Any]:
+        decoded = dict(row)
+        decoded["payload"] = json.loads(decoded.pop("payload_json") or "{}")
         return decoded

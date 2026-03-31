@@ -12,6 +12,7 @@ dependencies = [
 [project.scripts]
 autorep-gateway = "autorep_gateway.__main__:main"
 autorep-runtime = "autorep_runtime.main:main"
+autorep-dispatch = "autorep_runtime.dispatch_cli:main"
 
 [build-system]
 requires = ["setuptools>=68", "wheel"]
