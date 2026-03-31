@@ -6,43 +6,35 @@
     <title>AutoReplication</title>
     <style>
       :root {
-        --bg: #efe5d0;
-        --paper: rgba(255, 249, 240, 0.92);
-        --paper-strong: #fffdf8;
-        --ink: #231a12;
-        --muted: #6e6257;
-        --line: rgba(88, 68, 47, 0.16);
-        --teal: #135d55;
-        --teal-soft: rgba(19, 93, 85, 0.12);
-        --amber: #9a6430;
-        --amber-soft: rgba(154, 100, 48, 0.13);
-        --green: #2f8b57;
-        --blue: #2f6ab0;
-        --red: #ba493a;
-        --shadow: 0 22px 48px rgba(59, 41, 22, 0.11);
+        --bg: #f0f4f8;
+        --paper: rgba(255, 255, 255, 0.88);
+        --paper-strong: #ffffff;
+        --ink: #1a2332;
+        --muted: #64748b;
+        --line: rgba(148, 163, 184, 0.22);
+        --accent: #3b82f6;
+        --accent-soft: rgba(59, 130, 246, 0.08);
+        --green: #22c55e;
+        --amber: #f59e0b;
+        --red: #ef4444;
+        --shadow: 0 1px 3px rgba(0,0,0,0.05), 0 8px 24px rgba(0,0,0,0.04);
+        --shadow-lg: 0 4px 12px rgba(0,0,0,0.06), 0 20px 48px rgba(0,0,0,0.08);
+        --radius: 12px;
+        --radius-lg: 16px;
       }
 
-      * {
-        box-sizing: border-box;
-      }
+      * { box-sizing: border-box; }
 
       body {
         margin: 0;
         min-height: 100vh;
         color: var(--ink);
-        font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
-        background:
-          radial-gradient(circle at 12% 0%, rgba(19, 93, 85, 0.18), transparent 22%),
-          radial-gradient(circle at 88% 8%, rgba(154, 100, 48, 0.12), transparent 20%),
-          linear-gradient(180deg, #f8f2e8 0%, var(--bg) 100%);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+        background: linear-gradient(135deg, #f0f4f8 0%, #e8edf5 100%);
+        -webkit-font-smoothing: antialiased;
       }
 
-      button,
-      input,
-      select,
-      textarea {
-        font: inherit;
-      }
+      button, input, select, textarea { font: inherit; }
 
       .app-shell {
         min-height: 100vh;
@@ -50,136 +42,157 @@
         grid-template-rows: auto auto 1fr;
       }
 
+      /* ── Top Bar ── */
       .topbar {
-        padding: 24px 26px 18px;
+        padding: 20px 24px 16px;
         display: grid;
-        gap: 18px;
+        gap: 16px;
       }
 
       .masthead {
         display: flex;
         justify-content: space-between;
-        gap: 24px;
+        gap: 20px;
         align-items: end;
       }
 
       .title {
         margin: 0;
-        font-size: clamp(34px, 5vw, 58px);
-        line-height: 0.95;
-        letter-spacing: 0.02em;
+        font-size: clamp(26px, 4vw, 38px);
+        font-weight: 700;
+        line-height: 1;
+        letter-spacing: -0.01em;
+        color: var(--ink);
       }
 
       .subtitle {
-        margin-top: 10px;
-        max-width: 720px;
+        margin-top: 6px;
+        max-width: 620px;
         color: var(--muted);
+        font-size: 14px;
         line-height: 1.5;
       }
 
       .status-strip {
         display: grid;
         grid-template-columns: repeat(5, minmax(120px, 1fr));
-        gap: 12px;
+        gap: 10px;
       }
 
-      .status-card,
-      .surface {
+      .status-card, .surface {
         background: var(--paper);
         border: 1px solid var(--line);
         box-shadow: var(--shadow);
-        border-radius: 22px;
+        border-radius: var(--radius);
       }
 
       .status-card {
-        padding: 14px 16px;
+        padding: 12px 14px;
       }
 
       .status-label {
         font-size: 11px;
+        font-weight: 600;
         text-transform: uppercase;
-        letter-spacing: 0.08em;
+        letter-spacing: 0.06em;
         color: var(--muted);
       }
 
       .status-value {
-        margin-top: 8px;
-        font-size: 28px;
+        margin-top: 6px;
+        font-size: 24px;
+        font-weight: 700;
       }
 
       .status-meta {
-        margin-top: 6px;
-        font-size: 13px;
+        margin-top: 4px;
+        font-size: 12px;
         color: var(--muted);
-        line-height: 1.45;
+        line-height: 1.4;
       }
 
+      /* ── Task Bar ── */
       .task-bar {
-        margin: 0 26px;
-        padding: 14px 16px;
+        margin: 0 24px;
+        padding: 12px 14px;
         display: flex;
-        gap: 14px;
+        gap: 12px;
         align-items: center;
       }
 
       .task-bar label {
-        font-size: 12px;
+        font-size: 11px;
+        font-weight: 600;
         text-transform: uppercase;
-        letter-spacing: 0.08em;
+        letter-spacing: 0.06em;
         color: var(--muted);
       }
 
-      .task-bar .grow {
-        flex: 1;
-      }
+      .task-bar .grow { flex: 1; }
 
-      select,
-      input,
-      textarea {
+      select, input, textarea {
         width: 100%;
         border: 1px solid var(--line);
-        border-radius: 16px;
-        background: rgba(255, 252, 246, 0.92);
+        border-radius: 8px;
+        background: var(--paper-strong);
         color: var(--ink);
-        padding: 11px 12px;
+        padding: 10px 12px;
+        font-size: 14px;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      }
+
+      select:focus, input:focus, textarea:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px var(--accent-soft);
       }
 
       textarea {
         resize: vertical;
-        min-height: 110px;
+        min-height: 100px;
       }
 
       button {
         border: 0;
-        border-radius: 999px;
-        padding: 11px 16px;
+        border-radius: 8px;
+        padding: 10px 16px;
         cursor: pointer;
+        font-size: 13px;
+        font-weight: 600;
+        transition: background 0.15s ease, transform 0.1s ease;
       }
 
+      button:active { transform: scale(0.97); }
+
       .primary-btn {
-        background: var(--teal);
+        background: var(--accent);
         color: white;
       }
 
+      .primary-btn:hover { background: #2563eb; }
+
       .secondary-btn {
         background: transparent;
-        color: var(--teal);
-        border: 1px solid rgba(19, 93, 85, 0.28);
+        color: var(--accent);
+        border: 1px solid rgba(59, 130, 246, 0.25);
       }
 
+      .secondary-btn:hover { background: var(--accent-soft); }
+
+      /* ── Workspace / Board ── */
       .workspace {
-        padding: 16px 26px 26px;
+        padding: 14px 24px 24px;
       }
 
       .board {
         display: grid;
-        grid-template-columns: minmax(220px, 20%) minmax(520px, 50%) minmax(280px, 30%);
-        gap: 16px;
-        min-height: calc(100vh - 240px);
+        grid-template-columns: minmax(200px, 20%) minmax(480px, 50%) minmax(260px, 30%);
+        gap: 14px;
+        min-height: calc(100vh - 220px);
       }
 
       .panel-header {
-        padding: 14px 16px;
+        padding: 12px 14px;
         border-bottom: 1px solid var(--line);
         display: flex;
         align-items: center;
@@ -188,15 +201,14 @@
       }
 
       .panel-title {
-        font-size: 12px;
+        font-size: 11px;
+        font-weight: 600;
         text-transform: uppercase;
-        letter-spacing: 0.08em;
+        letter-spacing: 0.06em;
         color: var(--muted);
       }
 
-      .panel-body {
-        padding: 16px;
-      }
+      .panel-body { padding: 14px; }
 
       .stack {
         display: grid;
@@ -204,51 +216,57 @@
       }
 
       .empty-state {
-        padding: 18px;
-        border: 1px dashed rgba(88, 68, 47, 0.22);
-        border-radius: 18px;
+        padding: 16px;
+        border: 1px dashed rgba(148, 163, 184, 0.35);
+        border-radius: var(--radius);
         color: var(--muted);
+        font-size: 13px;
         line-height: 1.5;
+        text-align: center;
       }
 
+      /* ── Task Hero (canvas header) ── */
       .task-hero {
-        padding: 18px 18px 12px;
+        padding: 16px 16px 12px;
         border-bottom: 1px solid var(--line);
       }
 
       .task-hero-title {
         margin: 0;
-        font-size: clamp(24px, 3vw, 36px);
-        line-height: 1.1;
+        font-size: clamp(20px, 2.5vw, 28px);
+        font-weight: 700;
+        line-height: 1.15;
       }
 
       .task-hero-meta {
-        margin-top: 10px;
+        margin-top: 8px;
         color: var(--muted);
+        font-size: 13px;
         line-height: 1.5;
       }
 
       .task-counts {
-        margin-top: 14px;
+        margin-top: 10px;
         display: flex;
         flex-wrap: wrap;
-        gap: 8px;
+        gap: 6px;
       }
 
       .chip {
-        padding: 5px 10px;
+        padding: 4px 10px;
         border-radius: 999px;
-        background: rgba(255, 255, 255, 0.76);
-        border: 1px solid var(--line);
+        background: var(--accent-soft);
         font-size: 12px;
-        color: var(--muted);
+        font-weight: 500;
+        color: var(--accent);
       }
 
+      /* ── Timeline ── */
       .timeline {
         position: relative;
         display: grid;
-        gap: 14px;
-        padding-left: 18px;
+        gap: 12px;
+        padding-left: 20px;
       }
 
       .timeline::before {
@@ -258,60 +276,52 @@
         top: 6px;
         bottom: 6px;
         width: 2px;
-        background: linear-gradient(180deg, rgba(19, 93, 85, 0.45), rgba(154, 100, 48, 0.18));
+        background: linear-gradient(180deg, var(--accent), rgba(148, 163, 184, 0.25));
+        border-radius: 1px;
       }
 
       .stage-card {
         position: relative;
-        background: rgba(255, 255, 255, 0.72);
+        background: var(--paper-strong);
         border: 1px solid var(--line);
-        border-radius: 18px;
-        padding: 12px 12px 12px 14px;
+        border-radius: 10px;
+        padding: 10px 12px;
       }
 
       .stage-card::before {
         content: "";
         position: absolute;
-        left: -16px;
-        top: 18px;
-        width: 12px;
-        height: 12px;
+        left: -18px;
+        top: 16px;
+        width: 10px;
+        height: 10px;
         border-radius: 999px;
-        background: #d5c8b8;
+        background: rgba(148, 163, 184, 0.35);
         border: 2px solid var(--paper-strong);
       }
 
-      .stage-card.done::before {
-        background: var(--green);
-      }
+      .stage-card.done::before { background: var(--green); }
+      .stage-card.active::before { background: var(--accent); }
+      .stage-card.pending::before { background: rgba(148, 163, 184, 0.35); }
 
-      .stage-card.active::before {
-        background: var(--amber);
-      }
+      .stage-title { font-size: 14px; font-weight: 600; }
 
-      .stage-card.pending::before {
-        background: #d5c8b8;
-      }
-
-      .stage-title {
-        font-size: 15px;
-      }
-
-      .stage-meta,
-      .stage-body {
-        margin-top: 6px;
+      .stage-meta, .stage-body {
+        margin-top: 4px;
         color: var(--muted);
-        font-size: 13px;
-        line-height: 1.45;
+        font-size: 12px;
+        line-height: 1.4;
       }
 
+      /* ── Canvas ── */
       .canvas-shell {
         position: relative;
-        min-height: 560px;
+        min-height: 520px;
         overflow: hidden;
         background:
-          radial-gradient(circle at 50% 50%, rgba(19, 93, 85, 0.06), transparent 36%),
-          linear-gradient(180deg, rgba(255, 255, 255, 0.52), rgba(255, 255, 255, 0.2));
+          radial-gradient(circle, rgba(59, 130, 246, 0.03) 1px, transparent 1px),
+          var(--paper-strong);
+        background-size: 24px 24px;
       }
 
       .canvas-svg {
@@ -329,107 +339,138 @@
 
       .agent-node {
         position: absolute;
-        width: 150px;
+        width: 140px;
         transform: translate(-50%, -50%);
         text-align: center;
+        transition: left 0.3s ease, top 0.3s ease;
+        z-index: 2;
+      }
+
+      .agent-node[data-dragging="true"] {
+        transition: none;
+        z-index: 10;
       }
 
       .agent-node button {
-        width: 92px;
-        height: 92px;
+        width: 80px;
+        height: 80px;
         border-radius: 999px;
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(242, 232, 216, 0.96));
-        border: 1px solid rgba(35, 26, 18, 0.08);
-        box-shadow: 0 12px 28px rgba(44, 32, 17, 0.12);
+        background: var(--paper-strong);
+        border: 2px solid var(--line);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.06);
         color: var(--ink);
-        font-size: 13px;
-        padding: 0 10px;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 0 8px;
         position: relative;
+        cursor: grab;
+        transition: box-shadow 0.2s ease, border-color 0.2s ease;
       }
+
+      .agent-node button:active { cursor: grabbing; }
 
       .agent-node button::after {
         content: "";
         position: absolute;
-        inset: -8px;
+        inset: -6px;
         border-radius: 999px;
-        border: 3px solid transparent;
+        border: 2.5px solid transparent;
+        pointer-events: none;
       }
 
       .agent-node.working button::after {
-        border-color: rgba(47, 139, 87, 0.68);
+        border-color: var(--green);
         animation: pulse 2s infinite;
       }
 
       .agent-node.idle button::after {
-        border-color: rgba(47, 106, 176, 0.62);
+        border-color: rgba(59, 130, 246, 0.4);
       }
 
       .agent-node.fault button::after {
-        border-color: rgba(186, 73, 58, 0.78);
+        border-color: var(--red);
       }
 
       @keyframes pulse {
-        0% { opacity: 0.32; transform: scale(1); }
-        70% { opacity: 0; transform: scale(1.16); }
-        100% { opacity: 0; transform: scale(1.16); }
+        0% { opacity: 0.4; transform: scale(1); }
+        70% { opacity: 0; transform: scale(1.15); }
+        100% { opacity: 0; transform: scale(1.15); }
       }
 
       .agent-bubble {
-        margin-top: 10px;
-        border-radius: 16px;
-        padding: 10px 12px;
-        background: rgba(255, 255, 255, 0.88);
+        margin-top: 8px;
+        border-radius: 10px;
+        padding: 8px 10px;
+        background: var(--paper);
         border: 1px solid var(--line);
-        font-size: 12px;
-        line-height: 1.45;
+        font-size: 11px;
+        line-height: 1.4;
         color: var(--muted);
-        box-shadow: 0 8px 18px rgba(46, 35, 22, 0.08);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        pointer-events: none;
       }
 
+      /* ── Dispatch Card on Canvas ── */
       .dispatch-card {
         position: absolute;
         transform: translate(-50%, -50%);
-        max-width: 180px;
+        max-width: 170px;
         padding: 8px 10px;
-        border-radius: 14px;
-        background: rgba(255, 250, 242, 0.94);
-        border: 1px solid rgba(154, 100, 48, 0.25);
-        box-shadow: 0 12px 22px rgba(50, 38, 21, 0.1);
+        border-radius: 10px;
+        background: var(--paper-strong);
+        border: 1px solid rgba(59, 130, 246, 0.2);
+        box-shadow: 0 4px 14px rgba(0,0,0,0.06);
         cursor: pointer;
+        z-index: 3;
+        transition: box-shadow 0.15s ease;
+      }
+
+      .dispatch-card:hover {
+        box-shadow: 0 6px 20px rgba(0,0,0,0.1);
       }
 
       .dispatch-label {
         font-size: 12px;
+        font-weight: 500;
         line-height: 1.35;
       }
 
       .dispatch-meta {
-        margin-top: 4px;
+        margin-top: 3px;
         color: var(--muted);
         font-size: 11px;
       }
 
+      /* ── Agent Strip (right column) ── */
       .agent-strip {
         display: flex;
         flex-wrap: wrap;
-        gap: 10px;
+        gap: 8px;
       }
 
       .mini-agent {
-        width: 54px;
-        height: 54px;
+        width: 48px;
+        height: 48px;
         border-radius: 999px;
         border: 1px solid var(--line);
-        background: rgba(255, 255, 255, 0.76);
+        background: var(--paper-strong);
         display: grid;
         place-items: center;
         position: relative;
         cursor: pointer;
-        box-shadow: 0 8px 18px rgba(46, 35, 22, 0.08);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        transition: box-shadow 0.15s ease, transform 0.1s ease;
+      }
+
+      .mini-agent:hover {
+        box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+        transform: translateY(-1px);
       }
 
       .mini-agent span {
         font-size: 11px;
+        font-weight: 600;
+        color: var(--muted);
       }
 
       .mini-agent::after {
@@ -437,42 +478,43 @@
         position: absolute;
         right: 1px;
         bottom: 1px;
-        width: 12px;
-        height: 12px;
+        width: 11px;
+        height: 11px;
         border-radius: 999px;
         border: 2px solid var(--paper-strong);
-        background: #c8bcae;
+        background: rgba(148, 163, 184, 0.4);
       }
 
-      .mini-agent.online-active::after {
-        background: var(--green);
-      }
+      .mini-agent.online-active::after { background: var(--green); }
+      .mini-agent.online-idle::after { background: var(--accent); }
+      .mini-agent.fault::after { background: var(--red); }
 
-      .mini-agent.online-idle::after {
-        background: var(--blue);
-      }
-
-      .mini-agent.fault::after {
-        background: var(--red);
-      }
-
+      /* ── Activity Feed ── */
       .activity-feed {
         display: grid;
-        gap: 10px;
+        gap: 8px;
       }
 
       .activity-card {
-        padding: 11px 12px;
-        border-radius: 18px;
-        background: rgba(255, 255, 255, 0.72);
+        padding: 10px 12px;
+        border-radius: 10px;
+        background: var(--paper-strong);
         border: 1px solid var(--line);
         cursor: pointer;
+        transition: box-shadow 0.15s ease, transform 0.1s ease;
+        text-align: left;
+        width: 100%;
+      }
+
+      .activity-card:hover {
+        box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+        transform: translateY(-1px);
       }
 
       .activity-line {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
         flex-wrap: wrap;
       }
 
@@ -484,70 +526,61 @@
       .activity-agent {
         display: inline-flex;
         align-items: center;
-        gap: 6px;
-        font-size: 13px;
+        gap: 5px;
+        font-size: 12px;
       }
 
       .activity-route {
         display: inline-flex;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
         min-width: 0;
         flex-wrap: wrap;
       }
 
       .activity-avatar {
-        width: 22px;
-        height: 22px;
+        width: 20px;
+        height: 20px;
         border-radius: 999px;
         display: inline-grid;
         place-items: center;
-        background: rgba(255, 255, 255, 0.9);
+        background: var(--accent-soft);
         border: 1px solid var(--line);
-        font-size: 10px;
+        font-size: 9px;
+        font-weight: 700;
+        color: var(--accent);
       }
 
       .activity-arrow {
         color: var(--muted);
-        font-size: 14px;
+        font-size: 13px;
       }
 
       .activity-title {
-        font-size: 13px;
+        font-size: 12px;
         line-height: 1.35;
         min-width: 0;
       }
 
       .activity-status {
         margin-left: auto;
-        padding: 4px 8px;
+        padding: 3px 8px;
         border-radius: 999px;
         border: 1px solid currentColor;
         color: var(--muted);
         font-size: 10px;
+        font-weight: 600;
         text-transform: uppercase;
-        letter-spacing: 0.08em;
+        letter-spacing: 0.06em;
+        white-space: nowrap;
       }
 
-      .activity-line.spread .activity-status {
-        margin-left: 12px;
-      }
+      .activity-line.spread .activity-status { margin-left: 10px; }
 
-      .activity-status.good {
-        color: var(--green);
-      }
-
-      .activity-status.warn {
-        color: var(--amber);
-      }
-
-      .activity-status.bad {
-        color: var(--red);
-      }
-
-      .activity-status.muted {
-        color: var(--muted);
-      }
+      .activity-status.good { color: var(--green); }
+      .activity-status.warn { color: var(--amber); }
+      .activity-status.bad { color: var(--red); }
+      .activity-status.muted { color: var(--muted); }
 
       .activity-time {
         color: var(--muted);
@@ -555,13 +588,16 @@
         white-space: nowrap;
       }
 
+      /* ── Drawer ── */
       .drawer-backdrop {
         position: fixed;
         inset: 0;
-        background: rgba(33, 24, 16, 0.24);
+        background: rgba(15, 23, 42, 0.2);
+        backdrop-filter: blur(2px);
         opacity: 0;
         pointer-events: none;
-        transition: opacity 180ms ease;
+        transition: opacity 0.2s ease;
+        z-index: 100;
       }
 
       .drawer-backdrop.open {
@@ -571,28 +607,26 @@
 
       .drawer {
         position: fixed;
-        top: 18px;
-        right: 18px;
-        bottom: 18px;
-        width: min(480px, calc(100vw - 36px));
+        top: 12px;
+        right: 12px;
+        bottom: 12px;
+        width: min(460px, calc(100vw - 24px));
         background: var(--paper-strong);
         border: 1px solid var(--line);
-        border-radius: 24px;
-        box-shadow: 0 24px 60px rgba(33, 24, 16, 0.18);
-        transform: translateX(calc(100% + 30px));
-        transition: transform 180ms ease;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-lg);
+        transform: translateX(calc(100% + 24px));
+        transition: transform 0.2s ease;
         display: grid;
         grid-template-rows: auto 1fr;
         overflow: hidden;
+        z-index: 101;
       }
 
-      .drawer.open {
-        transform: translateX(0);
-      }
+      .drawer.open { transform: translateX(0); }
 
-      .drawer-header,
-      .modal-header {
-        padding: 16px 18px;
+      .drawer-header, .modal-header {
+        padding: 14px 16px;
         border-bottom: 1px solid var(--line);
         display: flex;
         align-items: center;
@@ -600,54 +634,61 @@
         gap: 12px;
       }
 
-      .drawer-body,
-      .modal-body {
-        padding: 18px;
+      .drawer-body, .modal-body {
+        padding: 16px;
         overflow: auto;
         display: grid;
-        gap: 14px;
+        gap: 12px;
       }
 
       .detail-block {
         border: 1px solid var(--line);
-        border-radius: 18px;
-        background: rgba(255, 255, 255, 0.68);
+        border-radius: 10px;
+        background: var(--paper);
         padding: 12px;
       }
 
       .detail-title {
-        margin: 0 0 10px;
-        font-size: 15px;
+        margin: 0 0 8px;
+        font-size: 14px;
+        font-weight: 600;
       }
 
       .kv {
         display: grid;
-        grid-template-columns: minmax(92px, 120px) 1fr;
-        gap: 8px 12px;
+        grid-template-columns: minmax(80px, 110px) 1fr;
+        gap: 6px 10px;
         font-size: 13px;
       }
 
       .kv strong {
         color: var(--muted);
+        font-weight: 500;
       }
 
       .mono {
-        font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+        font-family: "SF Mono", "Fira Code", Consolas, "Liberation Mono", Menlo, monospace;
         font-size: 12px;
         white-space: pre-wrap;
         word-break: break-word;
+        background: rgba(148, 163, 184, 0.06);
+        padding: 8px;
+        border-radius: 6px;
       }
 
+      /* ── Modal ── */
       .modal-shell {
         position: fixed;
         inset: 0;
         display: grid;
         place-items: center;
-        padding: 18px;
-        background: rgba(33, 24, 16, 0.28);
+        padding: 16px;
+        background: rgba(15, 23, 42, 0.25);
+        backdrop-filter: blur(2px);
         opacity: 0;
         pointer-events: none;
-        transition: opacity 180ms ease;
+        transition: opacity 0.2s ease;
+        z-index: 200;
       }
 
       .modal-shell.open {
@@ -656,12 +697,12 @@
       }
 
       .modal {
-        width: min(720px, 100%);
-        max-height: calc(100vh - 36px);
+        width: min(680px, 100%);
+        max-height: calc(100vh - 32px);
         background: var(--paper-strong);
         border: 1px solid var(--line);
-        border-radius: 24px;
-        box-shadow: 0 24px 60px rgba(33, 24, 16, 0.18);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-lg);
         overflow: hidden;
         display: grid;
         grid-template-rows: auto 1fr;
@@ -674,31 +715,35 @@
 
       .label {
         display: grid;
-        gap: 6px;
+        gap: 5px;
         color: var(--muted);
         font-size: 13px;
+        font-weight: 500;
       }
 
       .agent-checks {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-        gap: 10px;
+        grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+        gap: 8px;
       }
 
       .agent-check {
         display: flex;
         align-items: start;
-        gap: 10px;
-        padding: 10px 12px;
+        gap: 8px;
+        padding: 8px 10px;
         border: 1px solid var(--line);
-        border-radius: 16px;
-        background: rgba(255, 255, 255, 0.72);
+        border-radius: 8px;
+        background: var(--paper);
+        transition: border-color 0.15s ease;
       }
 
-      .agent-check input {
-        width: auto;
-        margin-top: 2px;
+      .agent-check:has(input:checked) {
+        border-color: var(--accent);
+        background: var(--accent-soft);
       }
+
+      .agent-check input { width: auto; margin-top: 2px; }
 
       .inline-actions {
         display: flex;
@@ -710,47 +755,32 @@
       .footnote {
         color: var(--muted);
         font-size: 12px;
-        line-height: 1.45;
+        line-height: 1.4;
       }
 
+      /* ── SVG connection animations ── */
+      @keyframes dash-flow {
+        to { stroke-dashoffset: -20; }
+      }
+
+      .conn-pending {
+        stroke-dasharray: 6 4;
+        animation: dash-flow 0.8s linear infinite;
+      }
+
+      /* ── Responsive ── */
       @media (max-width: 1260px) {
-        .status-strip {
-          grid-template-columns: repeat(2, minmax(120px, 1fr));
-        }
-
-        .board {
-          grid-template-columns: 1fr;
-        }
-
-        .canvas-shell {
-          min-height: 460px;
-        }
+        .status-strip { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+        .board { grid-template-columns: 1fr; }
+        .canvas-shell { min-height: 420px; }
       }
 
       @media (max-width: 720px) {
-        .topbar,
-        .workspace {
-          padding-left: 14px;
-          padding-right: 14px;
-        }
-
-        .task-bar {
-          margin: 0 14px;
-          flex-wrap: wrap;
-        }
-
-        .masthead {
-          flex-direction: column;
-          align-items: start;
-        }
-
-        .status-strip {
-          grid-template-columns: 1fr;
-        }
-
-        .kv {
-          grid-template-columns: 1fr;
-        }
+        .topbar, .workspace { padding-left: 12px; padding-right: 12px; }
+        .task-bar { margin: 0 12px; flex-wrap: wrap; }
+        .masthead { flex-direction: column; align-items: start; }
+        .status-strip { grid-template-columns: 1fr; }
+        .kv { grid-template-columns: 1fr; }
       }
     </style>
   </head>
@@ -761,8 +791,7 @@
           <div>
             <h1 class="title">AutoReplication</h1>
             <div class="subtitle">
-              A task-centric control console for small multi-agent research loops.
-              Gateway health stays at the top. Everything below is organized around the currently selected task.
+              Task-centric control console for multi-agent research loops.
             </div>
           </div>
         </div>
@@ -837,6 +866,10 @@
     </div>
 
     <script>
+      /* ── morphdom v2.7.4 (MIT) ── */
+      (function(global,factory){typeof exports==="object"&&typeof module!=="undefined"?module.exports=factory():typeof define==="function"&&define.amd?define(factory):(global=global||self,global.morphdom=factory())})(this,function(){"use strict";var DOCUMENT_FRAGMENT_NODE=11;function morphAttrs(fromNode,toNode){var toNodeAttrs=toNode.attributes;var attr;var attrName;var attrNamespaceURI;var attrValue;var fromValue;if(toNode.nodeType===DOCUMENT_FRAGMENT_NODE||fromNode.nodeType===DOCUMENT_FRAGMENT_NODE){return}for(var i=toNodeAttrs.length-1;i>=0;i--){attr=toNodeAttrs[i];attrName=attr.name;attrNamespaceURI=attr.namespaceURI;attrValue=attr.value;if(attrNamespaceURI){attrName=attr.localName||attrName;fromValue=fromNode.getAttributeNS(attrNamespaceURI,attrName);if(fromValue!==attrValue){if(attr.prefix==="xmlns"){attrName=attr.name}fromNode.setAttributeNS(attrNamespaceURI,attrName,attrValue)}}else{fromValue=fromNode.getAttribute(attrName);if(fromValue!==attrValue){fromNode.setAttribute(attrName,attrValue)}}}var fromNodeAttrs=fromNode.attributes;for(var d=fromNodeAttrs.length-1;d>=0;d--){attr=fromNodeAttrs[d];attrName=attr.name;attrNamespaceURI=attr.namespaceURI;if(attrNamespaceURI){attrName=attr.localName||attrName;if(!toNode.hasAttributeNS(attrNamespaceURI,attrName)){fromNode.removeAttributeNS(attrNamespaceURI,attrName)}}else{if(!toNode.hasAttribute(attrName)){fromNode.removeAttribute(attrName)}}}}var range;var NS_XHTML="http://www.w3.org/1999/xhtml";var doc=typeof document==="undefined"?undefined:document;var HAS_TEMPLATE_SUPPORT=!!doc&&"content"in doc.createElement("template");var HAS_RANGE_SUPPORT=!!doc&&doc.createRange&&"createContextualFragment"in doc.createRange();function createFragmentFromTemplate(str){var template=doc.createElement("template");template.innerHTML=str;return template.content.childNodes[0]}function createFragmentFromRange(str){if(!range){range=doc.createRange();range.selectNode(doc.body)}var fragment=range.createContextualFragment(str);return fragment.childNodes[0]}function createFragmentFromWrap(str){var fragment=doc.createElement("body");fragment.innerHTML=str;return fragment.childNodes[0]}function toElement(str){str=str.trim();if(HAS_TEMPLATE_SUPPORT){return createFragmentFromTemplate(str)}else if(HAS_RANGE_SUPPORT){return createFragmentFromRange(str)}return createFragmentFromWrap(str)}function compareNodeNames(fromEl,toEl){var fromNodeName=fromEl.nodeName;var toNodeName=toEl.nodeName;var fromCodeStart,toCodeStart;if(fromNodeName===toNodeName){return true}fromCodeStart=fromNodeName.charCodeAt(0);toCodeStart=toNodeName.charCodeAt(0);if(fromCodeStart<=90&&toCodeStart>=97){return fromNodeName===toNodeName.toUpperCase()}else if(toCodeStart<=90&&fromCodeStart>=97){return toNodeName===fromNodeName.toUpperCase()}else{return false}}function createElementNS(name,namespaceURI){return!namespaceURI||namespaceURI===NS_XHTML?doc.createElement(name):doc.createElementNS(namespaceURI,name)}function moveChildren(fromEl,toEl){var curChild=fromEl.firstChild;while(curChild){var nextChild=curChild.nextSibling;toEl.appendChild(curChild);curChild=nextChild}return toEl}function syncBooleanAttrProp(fromEl,toEl,name){if(fromEl[name]!==toEl[name]){fromEl[name]=toEl[name];if(fromEl[name]){fromEl.setAttribute(name,"")}else{fromEl.removeAttribute(name)}}}var specialElHandlers={OPTION:function(fromEl,toEl){var parentNode=fromEl.parentNode;if(parentNode){var parentName=parentNode.nodeName.toUpperCase();if(parentName==="OPTGROUP"){parentNode=parentNode.parentNode;parentName=parentNode&&parentNode.nodeName.toUpperCase()}if(parentName==="SELECT"&&!parentNode.hasAttribute("multiple")){if(fromEl.hasAttribute("selected")&&!toEl.selected){fromEl.setAttribute("selected","selected");fromEl.removeAttribute("selected")}parentNode.selectedIndex=-1}}syncBooleanAttrProp(fromEl,toEl,"selected")},INPUT:function(fromEl,toEl){syncBooleanAttrProp(fromEl,toEl,"checked");syncBooleanAttrProp(fromEl,toEl,"disabled");if(fromEl.value!==toEl.value){fromEl.value=toEl.value}if(!toEl.hasAttribute("value")){fromEl.removeAttribute("value")}},TEXTAREA:function(fromEl,toEl){var newValue=toEl.value;if(fromEl.value!==newValue){fromEl.value=newValue}var firstChild=fromEl.firstChild;if(firstChild){var oldValue=firstChild.nodeValue;if(oldValue==newValue||!newValue&&oldValue==fromEl.placeholder){return}firstChild.nodeValue=newValue}},SELECT:function(fromEl,toEl){if(!toEl.hasAttribute("multiple")){var selectedIndex=-1;var i=0;var curChild=fromEl.firstChild;var optgroup;var nodeName;while(curChild){nodeName=curChild.nodeName&&curChild.nodeName.toUpperCase();if(nodeName==="OPTGROUP"){optgroup=curChild;curChild=optgroup.firstChild}else{if(nodeName==="OPTION"){if(curChild.hasAttribute("selected")){selectedIndex=i;break}i++}curChild=curChild.nextSibling;if(!curChild&&optgroup){curChild=optgroup.nextSibling;optgroup=null}}}fromEl.selectedIndex=selectedIndex}}};var ELEMENT_NODE=1;var DOCUMENT_FRAGMENT_NODE$1=11;var TEXT_NODE=3;var COMMENT_NODE=8;function noop(){}function defaultGetNodeKey(node){if(node){return node.getAttribute&&node.getAttribute("id")||node.id}}function morphdomFactory(morphAttrs){return function morphdom(fromNode,toNode,options){if(!options){options={}}if(typeof toNode==="string"){if(fromNode.nodeName==="#document"||fromNode.nodeName==="HTML"||fromNode.nodeName==="BODY"){var toNodeHtml=toNode;toNode=doc.createElement("html");toNode.innerHTML=toNodeHtml}else{toNode=toElement(toNode)}}else if(toNode.nodeType===DOCUMENT_FRAGMENT_NODE$1){toNode=toNode.firstElementChild}var getNodeKey=options.getNodeKey||defaultGetNodeKey;var onBeforeNodeAdded=options.onBeforeNodeAdded||noop;var onNodeAdded=options.onNodeAdded||noop;var onBeforeElUpdated=options.onBeforeElUpdated||noop;var onElUpdated=options.onElUpdated||noop;var onBeforeNodeDiscarded=options.onBeforeNodeDiscarded||noop;var onNodeDiscarded=options.onNodeDiscarded||noop;var onBeforeElChildrenUpdated=options.onBeforeElChildrenUpdated||noop;var skipFromChildren=options.skipFromChildren||noop;var addChild=options.addChild||function(parent,child){return parent.appendChild(child)};var childrenOnly=options.childrenOnly===true;var fromNodesLookup=Object.create(null);var keyedRemovalList=[];function addKeyedRemoval(key){keyedRemovalList.push(key)}function walkDiscardedChildNodes(node,skipKeyedNodes){if(node.nodeType===ELEMENT_NODE){var curChild=node.firstChild;while(curChild){var key=undefined;if(skipKeyedNodes&&(key=getNodeKey(curChild))){addKeyedRemoval(key)}else{onNodeDiscarded(curChild);if(curChild.firstChild){walkDiscardedChildNodes(curChild,skipKeyedNodes)}}curChild=curChild.nextSibling}}}function removeNode(node,parentNode,skipKeyedNodes){if(onBeforeNodeDiscarded(node)===false){return}if(parentNode){parentNode.removeChild(node)}onNodeDiscarded(node);walkDiscardedChildNodes(node,skipKeyedNodes)}function indexTree(node){if(node.nodeType===ELEMENT_NODE||node.nodeType===DOCUMENT_FRAGMENT_NODE$1){var curChild=node.firstChild;while(curChild){var key=getNodeKey(curChild);if(key){fromNodesLookup[key]=curChild}indexTree(curChild);curChild=curChild.nextSibling}}}indexTree(fromNode);function handleNodeAdded(el){onNodeAdded(el);var curChild=el.firstChild;while(curChild){var nextSibling=curChild.nextSibling;var key=getNodeKey(curChild);if(key){var unmatchedFromEl=fromNodesLookup[key];if(unmatchedFromEl&&compareNodeNames(curChild,unmatchedFromEl)){curChild.parentNode.replaceChild(unmatchedFromEl,curChild);morphEl(unmatchedFromEl,curChild)}else{handleNodeAdded(curChild)}}else{handleNodeAdded(curChild)}curChild=nextSibling}}function cleanupFromEl(fromEl,curFromNodeChild,curFromNodeKey){while(curFromNodeChild){var fromNextSibling=curFromNodeChild.nextSibling;if(curFromNodeKey=getNodeKey(curFromNodeChild)){addKeyedRemoval(curFromNodeKey)}else{removeNode(curFromNodeChild,fromEl,true)}curFromNodeChild=fromNextSibling}}function morphEl(fromEl,toEl,childrenOnly){var toElKey=getNodeKey(toEl);if(toElKey){delete fromNodesLookup[toElKey]}if(!childrenOnly){var beforeUpdateResult=onBeforeElUpdated(fromEl,toEl);if(beforeUpdateResult===false){return}else if(beforeUpdateResult instanceof HTMLElement){fromEl=beforeUpdateResult;indexTree(fromEl)}morphAttrs(fromEl,toEl);onElUpdated(fromEl);if(onBeforeElChildrenUpdated(fromEl,toEl)===false){return}}if(fromEl.nodeName!=="TEXTAREA"){morphChildren(fromEl,toEl)}else{specialElHandlers.TEXTAREA(fromEl,toEl)}}function morphChildren(fromEl,toEl){var skipFrom=skipFromChildren(fromEl,toEl);var curToNodeChild=toEl.firstChild;var curFromNodeChild=fromEl.firstChild;var curToNodeKey;var curFromNodeKey;var fromNextSibling;var toNextSibling;var matchingFromEl;outer:while(curToNodeChild){toNextSibling=curToNodeChild.nextSibling;curToNodeKey=getNodeKey(curToNodeChild);while(!skipFrom&&curFromNodeChild){fromNextSibling=curFromNodeChild.nextSibling;if(curToNodeChild.isSameNode&&curToNodeChild.isSameNode(curFromNodeChild)){curToNodeChild=toNextSibling;curFromNodeChild=fromNextSibling;continue outer}curFromNodeKey=getNodeKey(curFromNodeChild);var curFromNodeType=curFromNodeChild.nodeType;var isCompatible=undefined;if(curFromNodeType===curToNodeChild.nodeType){if(curFromNodeType===ELEMENT_NODE){if(curToNodeKey){if(curToNodeKey!==curFromNodeKey){if(matchingFromEl=fromNodesLookup[curToNodeKey]){if(fromNextSibling===matchingFromEl){isCompatible=false}else{fromEl.insertBefore(matchingFromEl,curFromNodeChild);if(curFromNodeKey){addKeyedRemoval(curFromNodeKey)}else{removeNode(curFromNodeChild,fromEl,true)}curFromNodeChild=matchingFromEl;curFromNodeKey=getNodeKey(curFromNodeChild)}}else{isCompatible=false}}}else if(curFromNodeKey){isCompatible=false}isCompatible=isCompatible!==false&&compareNodeNames(curFromNodeChild,curToNodeChild);if(isCompatible){morphEl(curFromNodeChild,curToNodeChild)}}else if(curFromNodeType===TEXT_NODE||curFromNodeType==COMMENT_NODE){isCompatible=true;if(curFromNodeChild.nodeValue!==curToNodeChild.nodeValue){curFromNodeChild.nodeValue=curToNodeChild.nodeValue}}}if(isCompatible){curToNodeChild=toNextSibling;curFromNodeChild=fromNextSibling;continue outer}if(curFromNodeKey){addKeyedRemoval(curFromNodeKey)}else{removeNode(curFromNodeChild,fromEl,true)}curFromNodeChild=fromNextSibling}if(curToNodeKey&&(matchingFromEl=fromNodesLookup[curToNodeKey])&&compareNodeNames(matchingFromEl,curToNodeChild)){if(!skipFrom){addChild(fromEl,matchingFromEl)}morphEl(matchingFromEl,curToNodeChild)}else{var onBeforeNodeAddedResult=onBeforeNodeAdded(curToNodeChild);if(onBeforeNodeAddedResult!==false){if(onBeforeNodeAddedResult){curToNodeChild=onBeforeNodeAddedResult}if(curToNodeChild.actualize){curToNodeChild=curToNodeChild.actualize(fromEl.ownerDocument||doc)}addChild(fromEl,curToNodeChild);handleNodeAdded(curToNodeChild)}}curToNodeChild=toNextSibling;curFromNodeChild=fromNextSibling}cleanupFromEl(fromEl,curFromNodeChild,curFromNodeKey);var specialElHandler=specialElHandlers[fromEl.nodeName];if(specialElHandler){specialElHandler(fromEl,toEl)}}var morphedNode=fromNode;var morphedNodeType=morphedNode.nodeType;var toNodeType=toNode.nodeType;if(!childrenOnly){if(morphedNodeType===ELEMENT_NODE){if(toNodeType===ELEMENT_NODE){if(!compareNodeNames(fromNode,toNode)){onNodeDiscarded(fromNode);morphedNode=moveChildren(fromNode,createElementNS(toNode.nodeName,toNode.namespaceURI))}}else{morphedNode=toNode}}else if(morphedNodeType===TEXT_NODE||morphedNodeType===COMMENT_NODE){if(toNodeType===morphedNodeType){if(morphedNode.nodeValue!==toNode.nodeValue){morphedNode.nodeValue=toNode.nodeValue}return morphedNode}else{morphedNode=toNode}}}if(morphedNode===toNode){onNodeDiscarded(fromNode)}else{if(toNode.isSameNode&&toNode.isSameNode(morphedNode)){return}morphEl(morphedNode,toNode,childrenOnly);if(keyedRemovalList){for(var i=0,len=keyedRemovalList.length;i<len;i++){var elToRemove=fromNodesLookup[keyedRemovalList[i]];if(elToRemove){removeNode(elToRemove,elToRemove.parentNode,false)}}}}if(!childrenOnly&&morphedNode!==fromNode&&fromNode.parentNode){if(morphedNode.actualize){morphedNode=morphedNode.actualize(fromNode.ownerDocument||doc)}fromNode.parentNode.replaceChild(morphedNode,fromNode)}return morphedNode}}var morphdom=morphdomFactory(morphAttrs);return morphdom});
+
+      /* ── App State ── */
       const state = {
         overview: null,
         agents: [],
@@ -846,22 +879,23 @@
         drawer: null,
         pollHandle: null,
         taskDraft: null,
+        nodePositions: {},
+        canvasDrag: null,
+        prevAgentIds: null,
       };
 
-      async function fetchJson(path, options) {
-        const response = await fetch(path, options);
-        if (!response.ok) {
-          let message = `${response.status} ${response.statusText}`;
-          try {
-            const payload = await response.json();
-            if (payload && payload.detail) {
-              message = String(payload.detail);
-            }
-          } catch (error) {
-          }
-          throw new Error(message);
-        }
-        return response.json();
+      /* ── DOM Helpers ── */
+      function patchHtml(container, newHtml) {
+        const wrapper = document.createElement(container.tagName || "div");
+        wrapper.innerHTML = newHtml;
+        morphdom(container, wrapper, {
+          childrenOnly: true,
+          onBeforeElUpdated(fromEl, toEl) {
+            if (fromEl === document.activeElement) return false;
+            if (fromEl.dataset && fromEl.dataset.dragging === "true") return false;
+            return true;
+          },
+        });
       }
 
       function escapeHtml(value) {
@@ -874,219 +908,331 @@
       }
 
       function formatTime(value) {
-        if (!value) {
-          return "unset";
-        }
+        if (!value) return "unset";
         const date = new Date(value);
-        if (Number.isNaN(date.getTime())) {
-          return value;
-        }
+        if (Number.isNaN(date.getTime())) return value;
         return date.toLocaleString([], {
-          year: "numeric",
-          month: "short",
-          day: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
+          year: "numeric", month: "short", day: "numeric",
+          hour: "2-digit", minute: "2-digit",
         });
       }
 
       function truncate(value, length = 96) {
         const text = String(value ?? "").trim();
-        if (!text) {
-          return "";
-        }
+        if (!text) return "";
         return text.length > length ? `${text.slice(0, length - 1)}…` : text;
       }
 
       function statusTone(status) {
-        if (["running", "busy", "working", "active", "replied", "completed", "idle"].includes(status)) {
-          return "good";
-        }
-        if (["pending", "accepted", "created", "launching"].includes(status)) {
-          return "warn";
-        }
-        if (["failed", "fault", "offline", "error"].includes(status)) {
-          return "bad";
-        }
+        if (["running", "busy", "working", "active", "replied", "completed", "idle"].includes(status)) return "good";
+        if (["pending", "accepted", "created", "launching"].includes(status)) return "warn";
+        if (["failed", "fault", "offline", "error"].includes(status)) return "bad";
         return "muted";
       }
 
+      function elapsedSince(value) {
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return "unknown";
+        const deltaMs = Date.now() - date.getTime();
+        const minutes = Math.max(0, Math.floor(deltaMs / 60000));
+        if (minutes < 1) return "< 1 min";
+        if (minutes < 60) return `${minutes} min`;
+        const hours = Math.floor(minutes / 60);
+        const remain = minutes % 60;
+        return `${hours}h ${remain}m`;
+      }
+
+      async function fetchJson(path, options) {
+        const response = await fetch(path, options);
+        if (!response.ok) {
+          let message = `${response.status} ${response.statusText}`;
+          try {
+            const payload = await response.json();
+            if (payload && payload.detail) message = String(payload.detail);
+          } catch (e) {}
+          throw new Error(message);
+        }
+        return response.json();
+      }
+
+      /* ── Node Position Persistence ── */
+      function saveNodePositions() {
+        if (state.selectedTaskId) {
+          try {
+            localStorage.setItem(
+              `ar-canvas-${state.selectedTaskId}`,
+              JSON.stringify(state.nodePositions)
+            );
+          } catch (e) {}
+        }
+      }
+
+      function loadNodePositions() {
+        state.nodePositions = {};
+        if (state.selectedTaskId) {
+          try {
+            const saved = localStorage.getItem(`ar-canvas-${state.selectedTaskId}`);
+            if (saved) state.nodePositions = JSON.parse(saved);
+          } catch (e) {}
+        }
+      }
+
+      /* ── Simple Force Layout ── */
+      function computeForceLayout(agents, dispatches, width, height) {
+        const pad = 80;
+        const positions = {};
+
+        // Initialize in circle
+        agents.forEach((agent, i) => {
+          const existing = state.nodePositions[agent.id];
+          if (existing && existing.x > 0 && existing.y > 0) {
+            positions[agent.id] = { ...existing };
+          } else {
+            const angle = (Math.PI * 2 * i) / agents.length - Math.PI / 2;
+            const rx = Math.max(120, (width - pad * 2) / 2.8);
+            const ry = Math.max(90, (height - pad * 2) / 3);
+            positions[agent.id] = {
+              x: width / 2 + Math.cos(angle) * rx,
+              y: height / 2 + Math.sin(angle) * ry,
+            };
+          }
+        });
+
+        if (agents.length <= 1) return positions;
+
+        // Build edge set
+        const edges = dispatches
+          .filter(d => positions[d.from_agent_id] && positions[d.to_agent_id])
+          .map(d => [d.from_agent_id, d.to_agent_id]);
+
+        // Run iterations
+        const ids = agents.map(a => a.id);
+        for (let iter = 0; iter < 40; iter++) {
+          const forces = {};
+          ids.forEach(id => { forces[id] = { fx: 0, fy: 0 }; });
+
+          // Repulsion between all pairs
+          for (let i = 0; i < ids.length; i++) {
+            for (let j = i + 1; j < ids.length; j++) {
+              const a = positions[ids[i]];
+              const b = positions[ids[j]];
+              let dx = a.x - b.x;
+              let dy = a.y - b.y;
+              let dist = Math.sqrt(dx * dx + dy * dy);
+              if (dist < 1) { dx = 1; dy = 0; dist = 1; }
+              const repulse = 18000 / (dist * dist);
+              const fx = (dx / dist) * repulse;
+              const fy = (dy / dist) * repulse;
+              forces[ids[i]].fx += fx;
+              forces[ids[i]].fy += fy;
+              forces[ids[j]].fx -= fx;
+              forces[ids[j]].fy -= fy;
+            }
+          }
+
+          // Attraction along edges
+          edges.forEach(([a, b]) => {
+            const pa = positions[a];
+            const pb = positions[b];
+            const dx = pb.x - pa.x;
+            const dy = pb.y - pa.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < 1) return;
+            const attract = dist * 0.008;
+            const fx = (dx / dist) * attract;
+            const fy = (dy / dist) * attract;
+            forces[a].fx += fx;
+            forces[a].fy += fy;
+            forces[b].fx -= fx;
+            forces[b].fy -= fy;
+          });
+
+          // Center gravity
+          ids.forEach(id => {
+            const p = positions[id];
+            forces[id].fx += (width / 2 - p.x) * 0.002;
+            forces[id].fy += (height / 2 - p.y) * 0.002;
+          });
+
+          // Apply with damping
+          const damping = 0.3;
+          ids.forEach(id => {
+            const p = positions[id];
+            p.x += forces[id].fx * damping;
+            p.y += forces[id].fy * damping;
+            p.x = Math.max(pad, Math.min(width - pad, p.x));
+            p.y = Math.max(pad, Math.min(height - pad, p.y));
+          });
+        }
+
+        return positions;
+      }
+
+      /* ── Render: Status Strip ── */
       function renderStatusStrip() {
         const container = document.getElementById("status-strip");
         const overview = state.overview;
-        if (!overview) {
-          container.innerHTML = "";
-          return;
-        }
+        if (!overview) { patchHtml(container, ""); return; }
         const cards = [
-          {
-            label: "Gateway",
-            value: overview.gateway.status.toUpperCase(),
-            meta: `${overview.gateway.app} · port ${overview.gateway.port}`,
-          },
-          {
-            label: "Runtimes",
-            value: overview.runtimes.total,
-            meta: `${overview.runtimes.by_status.idle || 0} idle · ${overview.runtimes.by_status.busy || 0} busy`,
-          },
-          {
-            label: "Agents Working",
-            value: overview.agents.working,
-            meta: `${overview.agents.total} total agents`,
-          },
-          {
-            label: "Tasks Running",
-            value: overview.tasks.running,
-            meta: `${overview.tasks.total} total tasks`,
-          },
-          {
-            label: "Dispatches Waiting",
-            value: overview.dispatches.waiting_reply,
-            meta: `${overview.dispatches.total} total dispatches`,
-          },
+          { label: "Gateway", value: overview.gateway.status.toUpperCase(), meta: `${overview.gateway.app} · port ${overview.gateway.port}` },
+          { label: "Runtimes", value: overview.runtimes.total, meta: `${overview.runtimes.by_status.idle || 0} idle · ${overview.runtimes.by_status.busy || 0} busy` },
+          { label: "Agents Working", value: overview.agents.working, meta: `${overview.agents.total} total agents` },
+          { label: "Tasks Running", value: overview.tasks.running, meta: `${overview.tasks.total} total tasks` },
+          { label: "Dispatches Waiting", value: overview.dispatches.waiting_reply, meta: `${overview.dispatches.total} total dispatches` },
         ];
-        container.innerHTML = cards.map((card) => `
-          <div class="status-card">
-            <div class="status-label">${escapeHtml(card.label)}</div>
-            <div class="status-value">${escapeHtml(card.value)}</div>
-            <div class="status-meta">${escapeHtml(card.meta)}</div>
+        patchHtml(container, cards.map(c => `
+          <div class="status-card" id="sc-${escapeHtml(c.label.replace(/\s+/g, '-').toLowerCase())}">
+            <div class="status-label">${escapeHtml(c.label)}</div>
+            <div class="status-value">${escapeHtml(c.value)}</div>
+            <div class="status-meta">${escapeHtml(c.meta)}</div>
           </div>
-        `).join("");
+        `).join(""));
       }
 
+      /* ── Render: Task Select ── */
       function renderTaskSelect() {
         const select = document.getElementById("task-select");
         const tasks = state.tasks;
         if (!tasks.length) {
-          select.innerHTML = `<option value="">No tasks yet</option>`;
+          patchHtml(select, `<option value="">No tasks yet</option>`);
           select.disabled = true;
           return;
         }
         select.disabled = false;
-        select.innerHTML = tasks.map((task) => `
-          <option value="${escapeHtml(task.id)}" ${task.id === state.selectedTaskId ? "selected" : ""}>
-            ${escapeHtml(task.title)}
+        patchHtml(select, tasks.map(t => `
+          <option value="${escapeHtml(t.id)}" ${t.id === state.selectedTaskId ? "selected" : ""}>
+            ${escapeHtml(t.title)}
           </option>
-        `).join("");
+        `).join(""));
+        select.value = state.selectedTaskId || tasks[0]?.id || "";
       }
 
-      function normalizeStagePlan(task) {
-        const plan = task?.stage_plan;
-        if (Array.isArray(plan?.stages)) {
-          return plan.stages;
-        }
-        if (Array.isArray(plan)) {
-          return plan;
-        }
-        return [];
-      }
-
+      /* ── Classify Agent ── */
       function classifyAgent(agent, board) {
-        const sessions = board.sessions.filter((item) => item.agent_id === agent.id);
-        const dispatches = board.dispatches.filter((item) => item.from_agent_id === agent.id || item.to_agent_id === agent.id);
-        if (agent.status === "failed" || sessions.some((item) => item.status === "failed")) {
-          return "fault";
-        }
-        if (sessions.some((item) => ["created", "launching", "running"].includes(item.status))) {
-          return "working";
-        }
-        if (dispatches.some((item) => ["pending", "accepted", "running"].includes(item.status))) {
-          return "idle";
-        }
-        if (agent.status === "idle") {
-          return "idle";
-        }
+        const sessions = board.sessions.filter(s => s.agent_id === agent.id);
+        const dispatches = board.dispatches.filter(d => d.from_agent_id === agent.id || d.to_agent_id === agent.id);
+        if (agent.status === "failed" || sessions.some(s => s.status === "failed")) return "fault";
+        if (sessions.some(s => ["created", "launching", "running"].includes(s.status))) return "working";
+        if (dispatches.some(d => ["pending", "accepted", "running"].includes(d.status))) return "idle";
         return "idle";
       }
 
       function agentSummary(agent, board) {
-        const sessions = board.sessions.filter((item) => item.agent_id === agent.id);
-        const activeSession = sessions.find((item) => ["running", "launching", "created"].includes(item.status));
-        if (activeSession?.summary) {
-          return truncate(activeSession.summary, 84);
-        }
-        if (agent.summary) {
-          return truncate(agent.summary, 84);
-        }
-        const relatedDispatch = board.dispatches.find((item) =>
-          (item.from_agent_id === agent.id || item.to_agent_id === agent.id) &&
-          ["pending", "accepted", "running"].includes(item.status)
+        const sessions = board.sessions.filter(s => s.agent_id === agent.id);
+        const active = sessions.find(s => ["running", "launching", "created"].includes(s.status));
+        if (active?.summary) return truncate(active.summary, 80);
+        if (agent.summary) return truncate(agent.summary, 80);
+        const rd = board.dispatches.find(d =>
+          (d.from_agent_id === agent.id || d.to_agent_id === agent.id) &&
+          ["pending", "accepted", "running"].includes(d.status)
         );
-        if (relatedDispatch) {
-          return truncate(relatedDispatch.payload.title || relatedDispatch.payload.goal || relatedDispatch.payload.question || relatedDispatch.kind, 84);
-        }
+        if (rd) return truncate(rd.payload.title || rd.payload.goal || rd.payload.question || rd.kind, 80);
         return "No active summary yet.";
       }
 
+      function normalizeStagePlan(task) {
+        const plan = task?.stage_plan;
+        if (Array.isArray(plan?.stages)) return plan.stages;
+        if (Array.isArray(plan)) return plan;
+        return [];
+      }
+
+      /* ── Render: Timeline ── */
       function renderTimeline(stages) {
         if (!stages.length) {
-          return `<div class="empty-state">No stage plan has been published for this task yet.</div>`;
+          return `<div class="empty-state">No stage plan published for this task yet.</div>`;
         }
-        return `<div class="timeline">${stages.map((stage, index) => {
-          const status = stage.status || (index === 0 ? "active" : "pending");
+        return `<div class="timeline">${stages.map((s, i) => {
+          const status = s.status || (i === 0 ? "active" : "pending");
           return `
-            <article class="stage-card ${escapeHtml(status)}">
-              <div class="stage-title">${escapeHtml(stage.title || `Stage ${index + 1}`)}</div>
-              <div class="stage-meta">${escapeHtml((status || "pending").toUpperCase())}${stage.updated_at ? ` · ${escapeHtml(formatTime(stage.updated_at))}` : ""}</div>
-              <div class="stage-body">${escapeHtml(stage.summary || stage.description || "No summary yet.")}</div>
+            <article class="stage-card ${escapeHtml(status)}" id="stage-${i}">
+              <div class="stage-title">${escapeHtml(s.title || `Stage ${i + 1}`)}</div>
+              <div class="stage-meta">${escapeHtml((status).toUpperCase())}${s.updated_at ? ` · ${escapeHtml(formatTime(s.updated_at))}` : ""}</div>
+              <div class="stage-body">${escapeHtml(s.summary || s.description || "No summary yet.")}</div>
             </article>
           `;
         }).join("")}</div>`;
       }
 
+      /* ── Render: Canvas ── */
+      function getCanvasSize() {
+        const shell = document.querySelector(".canvas-shell");
+        if (!shell) return { width: 760, height: 520 };
+        return { width: shell.clientWidth || 760, height: shell.clientHeight || 520 };
+      }
+
       function renderCanvas(board) {
-        const containerWidth = 760;
-        const containerHeight = 560;
         const agents = board.active_agents;
         if (!agents.length) {
-          return `<div class="panel-body"><div class="empty-state">No active agents for this task yet. Once dispatches or sessions start running, the collaboration canvas will populate here.</div></div>`;
+          return `
+            <div class="panel-body"><div class="empty-state">
+              No active agents for this task yet.<br>Once dispatches or sessions start, the collaboration canvas will populate here.
+            </div></div>
+          `;
         }
 
-        const positions = new Map();
-        const radiusX = Math.max(180, Math.min(260, containerWidth / 2.6));
-        const radiusY = Math.max(120, Math.min(180, containerHeight / 3.4));
-        agents.forEach((agent, index) => {
-          const angle = (Math.PI * 2 * index) / agents.length - Math.PI / 2;
-          positions.set(agent.id, {
-            x: containerWidth / 2 + Math.cos(angle) * radiusX,
-            y: containerHeight / 2 + Math.sin(angle) * radiusY,
-          });
+        const { width: cw, height: ch } = getCanvasSize();
+        const containerWidth = Math.max(600, cw);
+        const containerHeight = Math.max(400, ch);
+
+        // Determine if we need to recompute layout
+        const currentIds = agents.map(a => a.id).sort().join(",");
+        const needsLayout = state.prevAgentIds !== currentIds;
+        if (needsLayout) {
+          const positions = computeForceLayout(agents, board.dispatches, containerWidth, containerHeight);
+          state.nodePositions = positions;
+          state.prevAgentIds = currentIds;
+          saveNodePositions();
+        }
+
+        // Ensure all agents have positions
+        agents.forEach((agent, i) => {
+          if (!state.nodePositions[agent.id]) {
+            const angle = (Math.PI * 2 * i) / agents.length - Math.PI / 2;
+            state.nodePositions[agent.id] = {
+              x: containerWidth / 2 + Math.cos(angle) * 180,
+              y: containerHeight / 2 + Math.sin(angle) * 130,
+            };
+          }
         });
 
-        const activeDispatches = board.dispatches.filter((item) => ["pending", "accepted", "running"].includes(item.status));
-        const lines = activeDispatches.map((dispatch) => {
-          const from = positions.get(dispatch.from_agent_id);
-          const to = positions.get(dispatch.to_agent_id);
-          if (!from || !to) {
-            return "";
-          }
-          return `<path d="M ${from.x} ${from.y} Q ${(from.x + to.x) / 2} ${Math.min(from.y, to.y) - 60} ${to.x} ${to.y}" fill="none" stroke="rgba(154, 100, 48, 0.34)" stroke-width="2.4" stroke-linecap="round"/>`;
+        const activeDispatches = board.dispatches.filter(d => ["pending", "accepted", "running"].includes(d.status));
+
+        // SVG arrow marker + connection lines
+        const arrowDef = `<defs><marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="rgba(100,116,139,0.5)"/></marker></defs>`;
+
+        const lines = activeDispatches.map(d => {
+          const from = state.nodePositions[d.from_agent_id];
+          const to = state.nodePositions[d.to_agent_id];
+          if (!from || !to) return "";
+          const cx = (from.x + to.x) / 2;
+          const cy = Math.min(from.y, to.y) - 50;
+          const cls = d.status === "pending" ? "conn-pending" : "";
+          return `<path data-from="${escapeHtml(d.from_agent_id)}" data-to="${escapeHtml(d.to_agent_id)}" d="M ${from.x} ${from.y} Q ${cx} ${cy} ${to.x} ${to.y}" fill="none" stroke="rgba(100,116,139,0.3)" stroke-width="2" stroke-linecap="round" marker-end="url(#arrowhead)" class="${cls}"/>`;
         }).join("");
 
-        const dispatchCards = activeDispatches.map((dispatch) => {
-          const from = positions.get(dispatch.from_agent_id);
-          const to = positions.get(dispatch.to_agent_id);
-          if (!from || !to) {
-            return "";
-          }
+        const dispatchCards = activeDispatches.map(d => {
+          const from = state.nodePositions[d.from_agent_id];
+          const to = state.nodePositions[d.to_agent_id];
+          if (!from || !to) return "";
           const left = (from.x + to.x) / 2;
-          const top = (from.y + to.y) / 2 - 34;
-          const startedAt = dispatch.accepted_at || dispatch.created_at;
+          const top = (from.y + to.y) / 2 - 30;
+          const startedAt = d.accepted_at || d.created_at;
           const runningFor = startedAt ? elapsedSince(startedAt) : "just now";
-          const label = dispatch.payload.title || dispatch.payload.goal || dispatch.payload.question || dispatch.kind;
+          const label = d.payload.title || d.payload.goal || d.payload.question || d.kind;
           return `
-            <button class="dispatch-card" style="left:${left}px; top:${top}px;" data-dispatch-id="${escapeHtml(dispatch.id)}" type="button">
-              <div class="dispatch-label">${escapeHtml(truncate(label, 42))}</div>
-              <div class="dispatch-meta">${escapeHtml(dispatch.status)} · ${escapeHtml(runningFor)}</div>
+            <button class="dispatch-card" style="left:${left}px;top:${top}px;" data-dispatch-id="${escapeHtml(d.id)}" data-from="${escapeHtml(d.from_agent_id)}" data-to="${escapeHtml(d.to_agent_id)}" type="button">
+              <div class="dispatch-label">${escapeHtml(truncate(label, 40))}</div>
+              <div class="dispatch-meta">${escapeHtml(d.status)} · ${escapeHtml(runningFor)}</div>
             </button>
           `;
         }).join("");
 
-        const nodes = agents.map((agent) => {
-          const position = positions.get(agent.id);
+        const nodes = agents.map(agent => {
+          const pos = state.nodePositions[agent.id];
           const mode = classifyAgent(agent, board);
           return `
-            <div class="agent-node ${escapeHtml(mode)}" style="left:${position.x}px; top:${position.y}px;">
+            <div class="agent-node ${escapeHtml(mode)}" id="anode-${escapeHtml(agent.id)}" style="left:${pos.x}px;top:${pos.y}px;">
               <button type="button" data-agent-id="${escapeHtml(agent.id)}">${escapeHtml(agent.name || agent.id)}</button>
               <div class="agent-bubble">${escapeHtml(agentSummary(agent, board))}</div>
             </div>
@@ -1099,39 +1245,22 @@
             <div class="task-hero-meta">${escapeHtml(board.task.summary || board.task.objective || "No operator summary yet.")}</div>
             <div class="task-counts">
               <span class="chip">${escapeHtml(board.counts.participant_agents)} participants</span>
-              <span class="chip">${escapeHtml(board.counts.active_agents)} active agents</span>
-              <span class="chip">${escapeHtml(board.counts.open_dispatches)} open dispatches</span>
-              <span class="chip">${escapeHtml(board.counts.running_sessions)} running sessions</span>
+              <span class="chip">${escapeHtml(board.counts.active_agents)} active</span>
+              <span class="chip">${escapeHtml(board.counts.open_dispatches)} dispatches</span>
+              <span class="chip">${escapeHtml(board.counts.running_sessions)} sessions</span>
             </div>
           </div>
           <div class="panel-body canvas-shell">
-            <svg class="canvas-svg" viewBox="0 0 ${containerWidth} ${containerHeight}" preserveAspectRatio="none">${lines}</svg>
+            <svg class="canvas-svg" viewBox="0 0 ${containerWidth} ${containerHeight}" preserveAspectRatio="xMidYMid meet">${arrowDef}${lines}</svg>
             <div class="canvas-layer">${nodes}${dispatchCards}</div>
           </div>
         `;
       }
 
-      function elapsedSince(value) {
-        const date = new Date(value);
-        if (Number.isNaN(date.getTime())) {
-          return "unknown";
-        }
-        const deltaMs = Date.now() - date.getTime();
-        const minutes = Math.max(0, Math.floor(deltaMs / 60000));
-        if (minutes < 1) {
-          return "under 1 min";
-        }
-        if (minutes < 60) {
-          return `${minutes} min`;
-        }
-        const hours = Math.floor(minutes / 60);
-        const remain = minutes % 60;
-        return `${hours}h ${remain}m`;
-      }
-
+      /* ── Render: Summary Rail ── */
       function renderSummaryRail(board) {
-        const avatarText = (value) => String(value || "?").slice(0, 2).toUpperCase();
-        const participants = board.participant_agents.map((agent) => {
+        const avatarText = v => String(v || "?").slice(0, 2).toUpperCase();
+        const participants = board.participant_agents.map(agent => {
           const mode = classifyAgent(agent, board);
           const cls = mode === "working" ? "online-active" : mode === "fault" ? "fault" : "online-idle";
           return `
@@ -1141,8 +1270,8 @@
           `;
         }).join("");
 
-        const activityItems = board.activity.filter((item) => item.kind === "dispatch" || item.kind === "system");
-        const feed = activityItems.length ? activityItems.map((item) => {
+        const activityItems = board.activity.filter(i => i.kind === "dispatch" || i.kind === "system");
+        const feed = activityItems.length ? activityItems.map(item => {
           if (item.kind === "dispatch") {
             const tone = statusTone(item.status);
             return `
@@ -1153,7 +1282,7 @@
                       <span class="activity-avatar">${escapeHtml(avatarText(item.from_agent_id))}</span>
                       <span>${escapeHtml(item.from_agent_id)}</span>
                     </span>
-                    <span class="activity-arrow">→</span>
+                    <span class="activity-arrow">&rarr;</span>
                     <span class="activity-agent">
                       <span class="activity-avatar">${escapeHtml(avatarText(item.to_agent_id))}</span>
                       <span>${escapeHtml(item.to_agent_id)}</span>
@@ -1162,7 +1291,7 @@
                   <span class="activity-time">${escapeHtml(formatTime(item.created_at))}</span>
                 </div>
                 <div class="activity-line spread">
-                  <span class="activity-title">${escapeHtml(truncate(item.title, 42))}</span>
+                  <span class="activity-title">${escapeHtml(truncate(item.title, 40))}</span>
                   <span class="activity-status ${escapeHtml(tone)}">${escapeHtml(item.status)}</span>
                 </div>
               </button>
@@ -1184,17 +1313,13 @@
 
         return `
           <section class="surface">
-            <div class="panel-header">
-              <div class="panel-title">Task Agents</div>
-            </div>
+            <div class="panel-header"><div class="panel-title">Task Agents</div></div>
             <div class="panel-body">
               ${participants ? `<div class="agent-strip">${participants}</div>` : `<div class="empty-state">No participant agents yet.</div>`}
             </div>
           </section>
           <section class="surface">
-            <div class="panel-header">
-              <div class="panel-title">Activity Summary</div>
-            </div>
+            <div class="panel-header"><div class="panel-title">Activity Summary</div></div>
             <div class="panel-body">
               <div class="activity-feed">${feed}</div>
             </div>
@@ -1202,43 +1327,111 @@
         `;
       }
 
+      /* ── Render: Board ── */
       function renderBoard() {
         const container = document.getElementById("board");
         if (!state.selectedTaskId) {
-          container.innerHTML = `<section class="surface"><div class="panel-body"><div class="empty-state">Create a task to start the control loop. The selected task will become the main workspace here.</div></div></section>`;
+          patchHtml(container, `<section class="surface"><div class="panel-body"><div class="empty-state">Create a task to start the control loop.</div></div></section>`);
           return;
         }
         if (!state.board) {
-          container.innerHTML = `<section class="surface"><div class="panel-body"><div class="empty-state">Loading task board…</div></div></section>`;
+          patchHtml(container, `<section class="surface"><div class="panel-body"><div class="empty-state">Loading task board...</div></div></section>`);
           return;
         }
 
         const stages = normalizeStagePlan(state.board.task);
-        container.innerHTML = `
-          <section class="surface">
-            <div class="panel-header">
-              <div class="panel-title">Stage Timeline</div>
-            </div>
-            <div class="panel-body">
-              ${renderTimeline(stages)}
-            </div>
+        patchHtml(container, `
+          <section class="surface" id="timeline-panel">
+            <div class="panel-header"><div class="panel-title">Stage Timeline</div></div>
+            <div class="panel-body">${renderTimeline(stages)}</div>
           </section>
-
-          <section class="surface">
+          <section class="surface" id="canvas-panel">
             ${renderCanvas(state.board)}
           </section>
-
-          <section class="stack">
+          <section class="stack" id="summary-panel">
             ${renderSummaryRail(state.board)}
           </section>
-        `;
+        `);
       }
 
+      /* ── Canvas Drag ── */
+      function initCanvasDrag() {
+        const board = document.getElementById("board");
+        if (!board) return;
+
+        board.addEventListener("pointerdown", (e) => {
+          const nodeBtn = e.target.closest(".agent-node button[data-agent-id]");
+          if (!nodeBtn) return;
+          const agentId = nodeBtn.dataset.agentId;
+          const pos = state.nodePositions[agentId];
+          if (!pos) return;
+
+          e.preventDefault();
+          const node = nodeBtn.closest(".agent-node");
+          node.dataset.dragging = "true";
+
+          const shell = document.querySelector(".canvas-shell");
+          const rect = shell.getBoundingClientRect();
+
+          state.canvasDrag = {
+            agentId,
+            offsetX: e.clientX - (rect.left + pos.x),
+            offsetY: e.clientY - (rect.top + pos.y),
+            shellRect: rect,
+          };
+
+          nodeBtn.setPointerCapture(e.pointerId);
+        });
+
+        board.addEventListener("pointermove", (e) => {
+          if (!state.canvasDrag) return;
+          const { agentId, offsetX, offsetY, shellRect } = state.canvasDrag;
+          const newX = e.clientX - shellRect.left - offsetX;
+          const newY = e.clientY - shellRect.top - offsetY;
+          state.nodePositions[agentId] = { x: newX, y: newY };
+
+          // Direct DOM update for smoothness
+          const node = document.getElementById(`anode-${agentId}`);
+          if (node) {
+            node.style.left = `${newX}px`;
+            node.style.top = `${newY}px`;
+          }
+          updateConnections();
+        });
+
+        board.addEventListener("pointerup", (e) => {
+          if (!state.canvasDrag) return;
+          const node = document.getElementById(`anode-${state.canvasDrag.agentId}`);
+          if (node) node.dataset.dragging = "false";
+          state.canvasDrag = null;
+          saveNodePositions();
+        });
+      }
+
+      function updateConnections() {
+        const svg = document.querySelector(".canvas-svg");
+        if (!svg) return;
+        svg.querySelectorAll("path[data-from][data-to]").forEach(path => {
+          const from = state.nodePositions[path.dataset.from];
+          const to = state.nodePositions[path.dataset.to];
+          if (!from || !to) return;
+          const cx = (from.x + to.x) / 2;
+          const cy = Math.min(from.y, to.y) - 50;
+          path.setAttribute("d", `M ${from.x} ${from.y} Q ${cx} ${cy} ${to.x} ${to.y}`);
+        });
+        document.querySelectorAll(".dispatch-card[data-from][data-to]").forEach(card => {
+          const from = state.nodePositions[card.dataset.from];
+          const to = state.nodePositions[card.dataset.to];
+          if (!from || !to) return;
+          card.style.left = `${(from.x + to.x) / 2}px`;
+          card.style.top = `${(from.y + to.y) / 2 - 30}px`;
+        });
+      }
+
+      /* ── Task Modal ── */
       function captureTaskDraft() {
         const shell = document.getElementById("task-modal-shell");
-        if (!shell.classList.contains("open")) {
-          return state.taskDraft;
-        }
+        if (!shell.classList.contains("open")) return state.taskDraft;
         const checks = [...document.querySelectorAll("#task-agent-checks input:checked")];
         state.taskDraft = {
           title: document.getElementById("task-title").value,
@@ -1246,7 +1439,7 @@
           objective: document.getElementById("task-objective").value,
           initialInput: document.getElementById("task-initial-input").value,
           summary: document.getElementById("task-summary").value,
-          participantAgentIds: checks.map((item) => item.value),
+          participantAgentIds: checks.map(i => i.value),
           statusText: document.getElementById("task-form-status").textContent || "",
         };
         return state.taskDraft;
@@ -1254,23 +1447,23 @@
 
       function populateTaskModal() {
         const entrySelect = document.getElementById("task-entry-agent");
-        const checks = document.getElementById("task-agent-checks");
+        const checksContainer = document.getElementById("task-agent-checks");
         const agents = state.agents;
         const draft = state.taskDraft || {};
-        entrySelect.innerHTML = agents.map((agent) => `
-          <option value="${escapeHtml(agent.id)}">${escapeHtml(agent.name || agent.id)} · ${escapeHtml(agent.id)}</option>
-        `).join("");
-        checks.innerHTML = agents.map((agent) => `
+        patchHtml(entrySelect, agents.map(a => `
+          <option value="${escapeHtml(a.id)}">${escapeHtml(a.name || a.id)} · ${escapeHtml(a.id)}</option>
+        `).join(""));
+        patchHtml(checksContainer, agents.map(a => `
           <label class="agent-check">
-            <input type="checkbox" value="${escapeHtml(agent.id)}" ${draft.participantAgentIds?.includes(agent.id) ? "checked" : ""}>
+            <input type="checkbox" value="${escapeHtml(a.id)}" ${draft.participantAgentIds?.includes(a.id) ? "checked" : ""}>
             <span>
-              <strong>${escapeHtml(agent.name || agent.id)}</strong><br>
-              <span class="footnote">${escapeHtml(agent.id)}${agent.runtime_id ? ` · ${escapeHtml(agent.runtime_id)}` : ""}</span>
+              <strong>${escapeHtml(a.name || a.id)}</strong><br>
+              <span class="footnote">${escapeHtml(a.id)}${a.runtime_id ? ` · ${escapeHtml(a.runtime_id)}` : ""}</span>
             </span>
           </label>
-        `).join("");
-        const fallbackEntryAgentId = draft.entryAgentId || agents[0]?.id || "";
-        entrySelect.value = agents.some((agent) => agent.id === fallbackEntryAgentId) ? fallbackEntryAgentId : (agents[0]?.id || "");
+        `).join(""));
+        const fallback = draft.entryAgentId || agents[0]?.id || "";
+        entrySelect.value = agents.some(a => a.id === fallback) ? fallback : (agents[0]?.id || "");
         document.getElementById("task-title").value = draft.title || "";
         document.getElementById("task-objective").value = draft.objective || "";
         document.getElementById("task-initial-input").value = draft.initialInput || "";
@@ -1281,13 +1474,9 @@
       function openTaskModal() {
         if (!state.taskDraft) {
           state.taskDraft = {
-            title: "",
-            entryAgentId: state.agents[0]?.id || "",
-            objective: "",
-            initialInput: "",
-            summary: "",
-            participantAgentIds: [],
-            statusText: "",
+            title: "", entryAgentId: state.agents[0]?.id || "",
+            objective: "", initialInput: "", summary: "",
+            participantAgentIds: [], statusText: "",
           };
         }
         populateTaskModal();
@@ -1299,9 +1488,10 @@
         state.taskDraft = null;
       }
 
+      /* ── Drawer ── */
       function openDrawer(title, html) {
         document.getElementById("drawer-title").textContent = title;
-        document.getElementById("drawer-body").innerHTML = html;
+        patchHtml(document.getElementById("drawer-body"), html);
         document.getElementById("drawer-backdrop").classList.add("open");
         document.getElementById("detail-drawer").classList.add("open");
       }
@@ -1313,102 +1503,88 @@
 
       function renderAgentDetail(agentId) {
         const board = state.board;
-        const agent = board?.participant_agents.find((item) => item.id === agentId) || state.agents.find((item) => item.id === agentId);
-        if (!agent) {
-          return;
-        }
-        const sessions = (board?.sessions || []).filter((item) => item.agent_id === agentId);
-        const dispatches = (board?.dispatches || []).filter((item) => item.from_agent_id === agentId || item.to_agent_id === agentId);
-        openDrawer(
-          agent.name || agent.id,
-          `
-            <div class="detail-block">
-              <h3 class="detail-title">Agent</h3>
-              <div class="kv">
-                <strong>ID</strong><span>${escapeHtml(agent.id)}</span>
-                <strong>Status</strong><span>${escapeHtml(agent.status || "idle")}</span>
-                <strong>Runtime</strong><span>${escapeHtml(agent.runtime_id || "unassigned")}</span>
-                <strong>Role</strong><span>${escapeHtml(agent.role || "unset")}</span>
-              </div>
+        const agent = board?.participant_agents.find(a => a.id === agentId) || state.agents.find(a => a.id === agentId);
+        if (!agent) return;
+        const sessions = (board?.sessions || []).filter(s => s.agent_id === agentId);
+        const dispatches = (board?.dispatches || []).filter(d => d.from_agent_id === agentId || d.to_agent_id === agentId);
+        openDrawer(agent.name || agent.id, `
+          <div class="detail-block">
+            <h3 class="detail-title">Agent</h3>
+            <div class="kv">
+              <strong>ID</strong><span>${escapeHtml(agent.id)}</span>
+              <strong>Status</strong><span>${escapeHtml(agent.status || "idle")}</span>
+              <strong>Runtime</strong><span>${escapeHtml(agent.runtime_id || "unassigned")}</span>
+              <strong>Role</strong><span>${escapeHtml(agent.role || "unset")}</span>
             </div>
-            <div class="detail-block">
-              <h3 class="detail-title">Current Task Scope</h3>
-              <div class="kv">
-                <strong>Sessions</strong><span>${escapeHtml(sessions.length)}</span>
-                <strong>Dispatches</strong><span>${escapeHtml(dispatches.length)}</span>
-              </div>
+          </div>
+          <div class="detail-block">
+            <h3 class="detail-title">Current Task Scope</h3>
+            <div class="kv">
+              <strong>Sessions</strong><span>${escapeHtml(sessions.length)}</span>
+              <strong>Dispatches</strong><span>${escapeHtml(dispatches.length)}</span>
             </div>
-            <div class="detail-block">
-              <h3 class="detail-title">Latest Summary</h3>
-              <div>${escapeHtml(agent.summary || agentSummary(agent, board || {sessions: [], dispatches: []}))}</div>
-            </div>
-          `
-        );
+          </div>
+          <div class="detail-block">
+            <h3 class="detail-title">Latest Summary</h3>
+            <div>${escapeHtml(agent.summary || agentSummary(agent, board || { sessions: [], dispatches: [] }))}</div>
+          </div>
+        `);
       }
 
       function renderDispatchDetail(dispatchId) {
-        const dispatch = state.board?.dispatches.find((item) => item.id === dispatchId);
-        if (!dispatch) {
-          return;
-        }
-        openDrawer(
-          dispatch.payload.title || dispatch.kind,
-          `
-            <div class="detail-block">
-              <h3 class="detail-title">Dispatch</h3>
-              <div class="kv">
-                <strong>ID</strong><span>${escapeHtml(dispatch.id)}</span>
-                <strong>Kind</strong><span>${escapeHtml(dispatch.kind)}</span>
-                <strong>Status</strong><span>${escapeHtml(dispatch.status)}</span>
-                <strong>From</strong><span>${escapeHtml(dispatch.from_agent_id)}</span>
-                <strong>To</strong><span>${escapeHtml(dispatch.to_agent_id)}</span>
-                <strong>Created</strong><span>${escapeHtml(formatTime(dispatch.created_at))}</span>
-                <strong>Resolved</strong><span>${escapeHtml(formatTime(dispatch.resolved_at))}</span>
-              </div>
+        const dispatch = state.board?.dispatches.find(d => d.id === dispatchId);
+        if (!dispatch) return;
+        openDrawer(dispatch.payload.title || dispatch.kind, `
+          <div class="detail-block">
+            <h3 class="detail-title">Dispatch</h3>
+            <div class="kv">
+              <strong>ID</strong><span>${escapeHtml(dispatch.id)}</span>
+              <strong>Kind</strong><span>${escapeHtml(dispatch.kind)}</span>
+              <strong>Status</strong><span>${escapeHtml(dispatch.status)}</span>
+              <strong>From</strong><span>${escapeHtml(dispatch.from_agent_id)}</span>
+              <strong>To</strong><span>${escapeHtml(dispatch.to_agent_id)}</span>
+              <strong>Created</strong><span>${escapeHtml(formatTime(dispatch.created_at))}</span>
+              <strong>Resolved</strong><span>${escapeHtml(formatTime(dispatch.resolved_at))}</span>
             </div>
-            <div class="detail-block">
-              <h3 class="detail-title">Payload</h3>
-              <div class="mono">${escapeHtml(JSON.stringify(dispatch.payload, null, 2))}</div>
-            </div>
-            <div class="detail-block">
-              <h3 class="detail-title">Reply</h3>
-              <div class="mono">${escapeHtml(dispatch.reply ? JSON.stringify(dispatch.reply, null, 2) : "No reply yet.")}</div>
-            </div>
-          `
-        );
+          </div>
+          <div class="detail-block">
+            <h3 class="detail-title">Payload</h3>
+            <div class="mono">${escapeHtml(JSON.stringify(dispatch.payload, null, 2))}</div>
+          </div>
+          <div class="detail-block">
+            <h3 class="detail-title">Reply</h3>
+            <div class="mono">${escapeHtml(dispatch.reply ? JSON.stringify(dispatch.reply, null, 2) : "No reply yet.")}</div>
+          </div>
+        `);
       }
 
       function renderSessionDetail(sessionId) {
-        const session = state.board?.sessions.find((item) => item.id === sessionId);
-        if (!session) {
-          return;
-        }
-        openDrawer(
-          session.title,
-          `
-            <div class="detail-block">
-              <h3 class="detail-title">Session</h3>
-              <div class="kv">
-                <strong>ID</strong><span>${escapeHtml(session.id)}</span>
-                <strong>Agent</strong><span>${escapeHtml(session.agent_id)}</span>
-                <strong>Status</strong><span>${escapeHtml(session.status)}</span>
-                <strong>Dispatch</strong><span>${escapeHtml(session.dispatch_id || "unset")}</span>
-                <strong>Preset</strong><span>${escapeHtml(session.preset_id || "unset")}</span>
-                <strong>Model</strong><span>${escapeHtml(session.model || "unset")}</span>
-              </div>
+        const session = state.board?.sessions.find(s => s.id === sessionId);
+        if (!session) return;
+        openDrawer(session.title, `
+          <div class="detail-block">
+            <h3 class="detail-title">Session</h3>
+            <div class="kv">
+              <strong>ID</strong><span>${escapeHtml(session.id)}</span>
+              <strong>Agent</strong><span>${escapeHtml(session.agent_id)}</span>
+              <strong>Status</strong><span>${escapeHtml(session.status)}</span>
+              <strong>Dispatch</strong><span>${escapeHtml(session.dispatch_id || "unset")}</span>
+              <strong>Preset</strong><span>${escapeHtml(session.preset_id || "unset")}</span>
+              <strong>Model</strong><span>${escapeHtml(session.model || "unset")}</span>
             </div>
-            <div class="detail-block">
-              <h3 class="detail-title">Summary</h3>
-              <div>${escapeHtml(session.summary || "No session summary yet.")}</div>
-            </div>
-            <div class="detail-block">
-              <h3 class="detail-title">Steering</h3>
-              <div class="footnote">Session-level steering entry point will be wired in the next UI step. This drawer is already scoped to the current task session.</div>
-            </div>
-          `
-        );
+          </div>
+          <div class="detail-block">
+            <h3 class="detail-title">Summary</h3>
+            <div>${escapeHtml(session.summary || "No session summary yet.")}</div>
+          </div>
+          <div class="detail-block">
+            <h3 class="detail-title">Steering</h3>
+            <div class="footnote">Session-level steering entry point will be wired in the next UI step.</div>
+          </div>
+        `);
       }
 
+      /* ── Data Loading ── */
       async function loadTasksAndAgents() {
         const [tasks, agents] = await Promise.all([
           fetchJson("/api/tasks"),
@@ -1416,10 +1592,8 @@
         ]);
         state.tasks = tasks;
         state.agents = agents;
-        if (!state.selectedTaskId && tasks.length) {
-          state.selectedTaskId = tasks[0].id;
-        }
-        if (state.selectedTaskId && !tasks.some((item) => item.id === state.selectedTaskId)) {
+        if (!state.selectedTaskId && tasks.length) state.selectedTaskId = tasks[0].id;
+        if (state.selectedTaskId && !tasks.some(t => t.id === state.selectedTaskId)) {
           state.selectedTaskId = tasks[0]?.id || null;
         }
       }
@@ -1429,17 +1603,14 @@
       }
 
       async function loadBoard() {
-        if (!state.selectedTaskId) {
-          state.board = null;
-          return;
-        }
+        if (!state.selectedTaskId) { state.board = null; return; }
         state.board = await fetchJson(`/api/tasks/${encodeURIComponent(state.selectedTaskId)}/board`);
       }
 
       async function refreshAll() {
         captureTaskDraft();
-        await loadOverview();
-        await loadTasksAndAgents();
+        await Promise.all([loadOverview(), loadTasksAndAgents()]);
+        loadNodePositions();
         await loadBoard();
         renderStatusStrip();
         renderTaskSelect();
@@ -1454,7 +1625,7 @@
         const initialInput = document.getElementById("task-initial-input").value.trim();
         const summary = document.getElementById("task-summary").value.trim();
         const checks = [...document.querySelectorAll("#task-agent-checks input:checked")];
-        const participantAgentIds = checks.map((item) => item.value);
+        const participantAgentIds = checks.map(i => i.value);
         const status = document.getElementById("task-form-status");
 
         if (!title || !entryAgentId || !initialInput) {
@@ -1462,12 +1633,12 @@
           return;
         }
 
-        status.textContent = "Creating…";
+        status.textContent = "Creating...";
         captureTaskDraft();
         try {
           const task = await fetchJson("/api/tasks", {
             method: "POST",
-            headers: {"Content-Type": "application/json"},
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               title,
               created_by: "human",
@@ -1477,14 +1648,12 @@
               initial_input: initialInput,
               summary: summary || null,
               stage_plan: {
-                stages: [
-                  {
-                    title: "Task created",
-                    status: "active",
-                    summary: "Initial task shell created by operator.",
-                    updated_at: new Date().toISOString(),
-                  },
-                ],
+                stages: [{
+                  title: "Task created",
+                  status: "active",
+                  summary: "Initial task shell created by operator.",
+                  updated_at: new Date().toISOString(),
+                }],
               },
             }),
           });
@@ -1497,61 +1666,52 @@
         }
       }
 
+      /* ── Event Handlers ── */
       function handleBoardClick(event) {
-        const agentButton = event.target.closest("[data-agent-id]");
-        if (agentButton) {
-          renderAgentDetail(agentButton.dataset.agentId);
-          return;
-        }
-        const dispatchButton = event.target.closest("[data-dispatch-id]");
-        if (dispatchButton) {
-          renderDispatchDetail(dispatchButton.dataset.dispatchId);
-          return;
-        }
-        const sessionButton = event.target.closest("[data-session-id]");
-        if (sessionButton) {
-          renderSessionDetail(sessionButton.dataset.sessionId);
-        }
+        if (state.canvasDrag) return;
+        const agentBtn = event.target.closest("[data-agent-id]");
+        if (agentBtn) { renderAgentDetail(agentBtn.dataset.agentId); return; }
+        const dispatchBtn = event.target.closest("[data-dispatch-id]");
+        if (dispatchBtn) { renderDispatchDetail(dispatchBtn.dataset.dispatchId); return; }
+        const sessionBtn = event.target.closest("[data-session-id]");
+        if (sessionBtn) { renderSessionDetail(sessionBtn.dataset.sessionId); }
       }
 
       function bindEvents() {
-        document.getElementById("task-select").addEventListener("change", async (event) => {
-          state.selectedTaskId = event.target.value || null;
+        document.getElementById("task-select").addEventListener("change", async (e) => {
+          state.selectedTaskId = e.target.value || null;
+          state.prevAgentIds = null;
+          loadNodePositions();
           await loadBoard();
           renderBoard();
         });
         document.getElementById("new-task-button").addEventListener("click", openTaskModal);
         document.getElementById("close-task-modal-button").addEventListener("click", closeTaskModal);
-        document.getElementById("task-modal-shell").addEventListener("click", (event) => {
-          if (event.target.id === "task-modal-shell") {
-            closeTaskModal();
-          }
+        document.getElementById("task-modal-shell").addEventListener("click", (e) => {
+          if (e.target.id === "task-modal-shell") closeTaskModal();
         });
         document.getElementById("create-task-button").addEventListener("click", createTask);
         document.getElementById("refresh-button").addEventListener("click", refreshAll);
         document.getElementById("board").addEventListener("click", handleBoardClick);
         document.getElementById("drawer-backdrop").addEventListener("click", closeDrawer);
         document.getElementById("close-drawer-button").addEventListener("click", closeDrawer);
+        initCanvasDrag();
       }
 
+      /* ── Boot ── */
       async function boot() {
         bindEvents();
         await refreshAll();
         state.pollHandle = window.setInterval(async () => {
-          try {
-            await refreshAll();
-          } catch (error) {
-          }
+          try { await refreshAll(); } catch (e) {}
         }, 5000);
       }
 
       boot().catch((error) => {
         document.getElementById("board").innerHTML = `
-          <section class="surface">
-            <div class="panel-body">
-              <div class="empty-state">Failed to load UI: ${escapeHtml(error.message)}</div>
-            </div>
-          </section>
+          <section class="surface"><div class="panel-body">
+            <div class="empty-state">Failed to load UI: ${escapeHtml(error.message)}</div>
+          </div></section>
         `;
       });
     </script>
