@@ -286,7 +286,10 @@ class DispatchProtocolTests(unittest.TestCase):
         manager_a._run_runtime_inbox_item(self.research_session["id"], inbox_items[0]["id"])
 
         messages = self.db.list_messages(session_id=self.research_session["id"])
-        self.assertEqual(self.db.get_dispatch(dispatch["id"])["status"], "replied")
+        updated_dispatch = self.db.get_dispatch(dispatch["id"])
+        assert updated_dispatch is not None
+        self.assertEqual(updated_dispatch["status"], "replied")
+        self.assertIsNotNone(updated_dispatch["resolved_at"])
         self.assertIn("dispatch", messages[0]["content"].lower())
 
     def test_clarification_request_routes_back_to_origin_session(self) -> None:

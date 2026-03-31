@@ -599,6 +599,7 @@ class GatewayDB:
     ) -> dict[str, Any]:
         record_id = str(uuid.uuid4())
         now = utc_now()
+        resolved_at = now if status in {"replied", "failed"} and reply is not None else None
         with self.connect() as connection:
             connection.execute(
                 """
@@ -619,7 +620,7 @@ class GatewayDB:
                     _json_dumps(reply) if reply is not None else None,
                     None,
                     None,
-                    None,
+                    resolved_at,
                     now,
                     now,
                 ),
@@ -710,6 +711,8 @@ class GatewayDB:
         if accepted is True and accepted_at is None:
             accepted_at = now
         if resolved is True:
+            resolved_at = now
+        elif next_status in {"replied", "failed"} and next_reply is not None and resolved_at is None:
             resolved_at = now
         with self.connect() as connection:
             connection.execute(
