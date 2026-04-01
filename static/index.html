@@ -42,7 +42,6 @@
         grid-template-rows: auto auto 1fr;
       }
 
-      /* ── Top Bar ── */
       .topbar {
         padding: 20px 24px 16px;
       }
@@ -117,7 +116,6 @@
         line-height: 1.4;
       }
 
-      /* ── Task Bar ── */
       .task-bar {
         margin: 0 24px;
         padding: 12px 14px;
@@ -185,7 +183,6 @@
 
       .secondary-btn:hover { background: var(--accent-soft); }
 
-      /* ── Workspace / Board ── */
       .workspace {
         padding: 14px 24px 24px;
       }
@@ -231,7 +228,6 @@
         text-align: center;
       }
 
-      /* ── Task Hero (canvas header) ── */
       .task-hero {
         padding: 16px 16px 12px;
         border-bottom: 1px solid var(--line);
@@ -267,7 +263,6 @@
         color: var(--accent);
       }
 
-      /* ── Timeline ── */
       .timeline {
         position: relative;
         display: grid;
@@ -319,7 +314,6 @@
         line-height: 1.4;
       }
 
-      /* ── Canvas ── */
       .canvas-shell {
         position: relative;
         min-height: 520px;
@@ -416,7 +410,6 @@
         pointer-events: none;
       }
 
-      /* ── Dispatch Card on Canvas ── */
       .dispatch-card {
         position: absolute;
         transform: translate(-50%, -50%);
@@ -447,7 +440,6 @@
         font-size: 11px;
       }
 
-      /* ── Agent Strip (right column) ── */
       .agent-strip {
         display: flex;
         flex-wrap: wrap;
@@ -495,7 +487,6 @@
       .mini-agent.online-idle::after { background: var(--accent); }
       .mini-agent.fault::after { background: var(--red); }
 
-      /* ── Activity Feed ── */
       .activity-feed {
         display: grid;
         gap: 8px;
@@ -594,7 +585,6 @@
         white-space: nowrap;
       }
 
-      /* ── Drawer ── */
       .drawer-backdrop {
         position: fixed;
         inset: 0;
@@ -682,7 +672,6 @@
         border-radius: 6px;
       }
 
-      /* ── Modal ── */
       .modal-shell {
         position: fixed;
         inset: 0;
@@ -764,7 +753,6 @@
         line-height: 1.4;
       }
 
-      /* ── SVG connection animations ── */
       @keyframes dash-flow {
         to { stroke-dashoffset: -20; }
       }
@@ -774,7 +762,6 @@
         animation: dash-flow 0.8s linear infinite;
       }
 
-      /* ── Responsive ── */
       @media (max-width: 1260px) {
         .masthead { flex-direction: column; }
         .status-strip {
@@ -815,6 +802,7 @@
           <select id="task-select"></select>
         </div>
         <button id="new-task-button" class="primary-btn" type="button">新建任务</button>
+        <button id="agent-management-button" class="secondary-btn" type="button">Agent 管理</button>
         <button id="refresh-button" class="secondary-btn" type="button">刷新</button>
       </section>
 
@@ -880,13 +868,13 @@
       /* ── morphdom v2.7.4 (MIT) ── */
       (function(global,factory){typeof exports==="object"&&typeof module!=="undefined"?module.exports=factory():typeof define==="function"&&define.amd?define(factory):(global=global||self,global.morphdom=factory())})(this,function(){"use strict";var DOCUMENT_FRAGMENT_NODE=11;function morphAttrs(fromNode,toNode){var toNodeAttrs=toNode.attributes;var attr;var attrName;var attrNamespaceURI;var attrValue;var fromValue;if(toNode.nodeType===DOCUMENT_FRAGMENT_NODE||fromNode.nodeType===DOCUMENT_FRAGMENT_NODE){return}for(var i=toNodeAttrs.length-1;i>=0;i--){attr=toNodeAttrs[i];attrName=attr.name;attrNamespaceURI=attr.namespaceURI;attrValue=attr.value;if(attrNamespaceURI){attrName=attr.localName||attrName;fromValue=fromNode.getAttributeNS(attrNamespaceURI,attrName);if(fromValue!==attrValue){if(attr.prefix==="xmlns"){attrName=attr.name}fromNode.setAttributeNS(attrNamespaceURI,attrName,attrValue)}}else{fromValue=fromNode.getAttribute(attrName);if(fromValue!==attrValue){fromNode.setAttribute(attrName,attrValue)}}}var fromNodeAttrs=fromNode.attributes;for(var d=fromNodeAttrs.length-1;d>=0;d--){attr=fromNodeAttrs[d];attrName=attr.name;attrNamespaceURI=attr.namespaceURI;if(attrNamespaceURI){attrName=attr.localName||attrName;if(!toNode.hasAttributeNS(attrNamespaceURI,attrName)){fromNode.removeAttributeNS(attrNamespaceURI,attrName)}}else{if(!toNode.hasAttribute(attrName)){fromNode.removeAttribute(attrName)}}}}var range;var NS_XHTML="http://www.w3.org/1999/xhtml";var doc=typeof document==="undefined"?undefined:document;var HAS_TEMPLATE_SUPPORT=!!doc&&"content"in doc.createElement("template");var HAS_RANGE_SUPPORT=!!doc&&doc.createRange&&"createContextualFragment"in doc.createRange();function createFragmentFromTemplate(str){var template=doc.createElement("template");template.innerHTML=str;return template.content.childNodes[0]}function createFragmentFromRange(str){if(!range){range=doc.createRange();range.selectNode(doc.body)}var fragment=range.createContextualFragment(str);return fragment.childNodes[0]}function createFragmentFromWrap(str){var fragment=doc.createElement("body");fragment.innerHTML=str;return fragment.childNodes[0]}function toElement(str){str=str.trim();if(HAS_TEMPLATE_SUPPORT){return createFragmentFromTemplate(str)}else if(HAS_RANGE_SUPPORT){return createFragmentFromRange(str)}return createFragmentFromWrap(str)}function compareNodeNames(fromEl,toEl){var fromNodeName=fromEl.nodeName;var toNodeName=toEl.nodeName;var fromCodeStart,toCodeStart;if(fromNodeName===toNodeName){return true}fromCodeStart=fromNodeName.charCodeAt(0);toCodeStart=toNodeName.charCodeAt(0);if(fromCodeStart<=90&&toCodeStart>=97){return fromNodeName===toNodeName.toUpperCase()}else if(toCodeStart<=90&&fromCodeStart>=97){return toNodeName===fromNodeName.toUpperCase()}else{return false}}function createElementNS(name,namespaceURI){return!namespaceURI||namespaceURI===NS_XHTML?doc.createElement(name):doc.createElementNS(namespaceURI,name)}function moveChildren(fromEl,toEl){var curChild=fromEl.firstChild;while(curChild){var nextChild=curChild.nextSibling;toEl.appendChild(curChild);curChild=nextChild}return toEl}function syncBooleanAttrProp(fromEl,toEl,name){if(fromEl[name]!==toEl[name]){fromEl[name]=toEl[name];if(fromEl[name]){fromEl.setAttribute(name,"")}else{fromEl.removeAttribute(name)}}}var specialElHandlers={OPTION:function(fromEl,toEl){var parentNode=fromEl.parentNode;if(parentNode){var parentName=parentNode.nodeName.toUpperCase();if(parentName==="OPTGROUP"){parentNode=parentNode.parentNode;parentName=parentNode&&parentNode.nodeName.toUpperCase()}if(parentName==="SELECT"&&!parentNode.hasAttribute("multiple")){if(fromEl.hasAttribute("selected")&&!toEl.selected){fromEl.setAttribute("selected","selected");fromEl.removeAttribute("selected")}parentNode.selectedIndex=-1}}syncBooleanAttrProp(fromEl,toEl,"selected")},INPUT:function(fromEl,toEl){syncBooleanAttrProp(fromEl,toEl,"checked");syncBooleanAttrProp(fromEl,toEl,"disabled");if(fromEl.value!==toEl.value){fromEl.value=toEl.value}if(!toEl.hasAttribute("value")){fromEl.removeAttribute("value")}},TEXTAREA:function(fromEl,toEl){var newValue=toEl.value;if(fromEl.value!==newValue){fromEl.value=newValue}var firstChild=fromEl.firstChild;if(firstChild){var oldValue=firstChild.nodeValue;if(oldValue==newValue||!newValue&&oldValue==fromEl.placeholder){return}firstChild.nodeValue=newValue}},SELECT:function(fromEl,toEl){if(!toEl.hasAttribute("multiple")){var selectedIndex=-1;var i=0;var curChild=fromEl.firstChild;var optgroup;var nodeName;while(curChild){nodeName=curChild.nodeName&&curChild.nodeName.toUpperCase();if(nodeName==="OPTGROUP"){optgroup=curChild;curChild=optgroup.firstChild}else{if(nodeName==="OPTION"){if(curChild.hasAttribute("selected")){selectedIndex=i;break}i++}curChild=curChild.nextSibling;if(!curChild&&optgroup){curChild=optgroup.nextSibling;optgroup=null}}}fromEl.selectedIndex=selectedIndex}}};var ELEMENT_NODE=1;var DOCUMENT_FRAGMENT_NODE$1=11;var TEXT_NODE=3;var COMMENT_NODE=8;function noop(){}function defaultGetNodeKey(node){if(node){return node.getAttribute&&node.getAttribute("id")||node.id}}function morphdomFactory(morphAttrs){return function morphdom(fromNode,toNode,options){if(!options){options={}}if(typeof toNode==="string"){if(fromNode.nodeName==="#document"||fromNode.nodeName==="HTML"||fromNode.nodeName==="BODY"){var toNodeHtml=toNode;toNode=doc.createElement("html");toNode.innerHTML=toNodeHtml}else{toNode=toElement(toNode)}}else if(toNode.nodeType===DOCUMENT_FRAGMENT_NODE$1){toNode=toNode.firstElementChild}var getNodeKey=options.getNodeKey||defaultGetNodeKey;var onBeforeNodeAdded=options.onBeforeNodeAdded||noop;var onNodeAdded=options.onNodeAdded||noop;var onBeforeElUpdated=options.onBeforeElUpdated||noop;var onElUpdated=options.onElUpdated||noop;var onBeforeNodeDiscarded=options.onBeforeNodeDiscarded||noop;var onNodeDiscarded=options.onNodeDiscarded||noop;var onBeforeElChildrenUpdated=options.onBeforeElChildrenUpdated||noop;var skipFromChildren=options.skipFromChildren||noop;var addChild=options.addChild||function(parent,child){return parent.appendChild(child)};var childrenOnly=options.childrenOnly===true;var fromNodesLookup=Object.create(null);var keyedRemovalList=[];function addKeyedRemoval(key){keyedRemovalList.push(key)}function walkDiscardedChildNodes(node,skipKeyedNodes){if(node.nodeType===ELEMENT_NODE){var curChild=node.firstChild;while(curChild){var key=undefined;if(skipKeyedNodes&&(key=getNodeKey(curChild))){addKeyedRemoval(key)}else{onNodeDiscarded(curChild);if(curChild.firstChild){walkDiscardedChildNodes(curChild,skipKeyedNodes)}}curChild=curChild.nextSibling}}}function removeNode(node,parentNode,skipKeyedNodes){if(onBeforeNodeDiscarded(node)===false){return}if(parentNode){parentNode.removeChild(node)}onNodeDiscarded(node);walkDiscardedChildNodes(node,skipKeyedNodes)}function indexTree(node){if(node.nodeType===ELEMENT_NODE||node.nodeType===DOCUMENT_FRAGMENT_NODE$1){var curChild=node.firstChild;while(curChild){var key=getNodeKey(curChild);if(key){fromNodesLookup[key]=curChild}indexTree(curChild);curChild=curChild.nextSibling}}}indexTree(fromNode);function handleNodeAdded(el){onNodeAdded(el);var curChild=el.firstChild;while(curChild){var nextSibling=curChild.nextSibling;var key=getNodeKey(curChild);if(key){var unmatchedFromEl=fromNodesLookup[key];if(unmatchedFromEl&&compareNodeNames(curChild,unmatchedFromEl)){curChild.parentNode.replaceChild(unmatchedFromEl,curChild);morphEl(unmatchedFromEl,curChild)}else{handleNodeAdded(curChild)}}else{handleNodeAdded(curChild)}curChild=nextSibling}}function cleanupFromEl(fromEl,curFromNodeChild,curFromNodeKey){while(curFromNodeChild){var fromNextSibling=curFromNodeChild.nextSibling;if(curFromNodeKey=getNodeKey(curFromNodeChild)){addKeyedRemoval(curFromNodeKey)}else{removeNode(curFromNodeChild,fromEl,true)}curFromNodeChild=fromNextSibling}}function morphEl(fromEl,toEl,childrenOnly){var toElKey=getNodeKey(toEl);if(toElKey){delete fromNodesLookup[toElKey]}if(!childrenOnly){var beforeUpdateResult=onBeforeElUpdated(fromEl,toEl);if(beforeUpdateResult===false){return}else if(beforeUpdateResult instanceof HTMLElement){fromEl=beforeUpdateResult;indexTree(fromEl)}morphAttrs(fromEl,toEl);onElUpdated(fromEl);if(onBeforeElChildrenUpdated(fromEl,toEl)===false){return}}if(fromEl.nodeName!=="TEXTAREA"){morphChildren(fromEl,toEl)}else{specialElHandlers.TEXTAREA(fromEl,toEl)}}function morphChildren(fromEl,toEl){var skipFrom=skipFromChildren(fromEl,toEl);var curToNodeChild=toEl.firstChild;var curFromNodeChild=fromEl.firstChild;var curToNodeKey;var curFromNodeKey;var fromNextSibling;var toNextSibling;var matchingFromEl;outer:while(curToNodeChild){toNextSibling=curToNodeChild.nextSibling;curToNodeKey=getNodeKey(curToNodeChild);while(!skipFrom&&curFromNodeChild){fromNextSibling=curFromNodeChild.nextSibling;if(curToNodeChild.isSameNode&&curToNodeChild.isSameNode(curFromNodeChild)){curToNodeChild=toNextSibling;curFromNodeChild=fromNextSibling;continue outer}curFromNodeKey=getNodeKey(curFromNodeChild);var curFromNodeType=curFromNodeChild.nodeType;var isCompatible=undefined;if(curFromNodeType===curToNodeChild.nodeType){if(curFromNodeType===ELEMENT_NODE){if(curToNodeKey){if(curToNodeKey!==curFromNodeKey){if(matchingFromEl=fromNodesLookup[curToNodeKey]){if(fromNextSibling===matchingFromEl){isCompatible=false}else{fromEl.insertBefore(matchingFromEl,curFromNodeChild);if(curFromNodeKey){addKeyedRemoval(curFromNodeKey)}else{removeNode(curFromNodeChild,fromEl,true)}curFromNodeChild=matchingFromEl;curFromNodeKey=getNodeKey(curFromNodeChild)}}else{isCompatible=false}}}else if(curFromNodeKey){isCompatible=false}isCompatible=isCompatible!==false&&compareNodeNames(curFromNodeChild,curToNodeChild);if(isCompatible){morphEl(curFromNodeChild,curToNodeChild)}}else if(curFromNodeType===TEXT_NODE||curFromNodeType==COMMENT_NODE){isCompatible=true;if(curFromNodeChild.nodeValue!==curToNodeChild.nodeValue){curFromNodeChild.nodeValue=curToNodeChild.nodeValue}}}if(isCompatible){curToNodeChild=toNextSibling;curFromNodeChild=fromNextSibling;continue outer}if(curFromNodeKey){addKeyedRemoval(curFromNodeKey)}else{removeNode(curFromNodeChild,fromEl,true)}curFromNodeChild=fromNextSibling}if(curToNodeKey&&(matchingFromEl=fromNodesLookup[curToNodeKey])&&compareNodeNames(matchingFromEl,curToNodeChild)){if(!skipFrom){addChild(fromEl,matchingFromEl)}morphEl(matchingFromEl,curToNodeChild)}else{var onBeforeNodeAddedResult=onBeforeNodeAdded(curToNodeChild);if(onBeforeNodeAddedResult!==false){if(onBeforeNodeAddedResult){curToNodeChild=onBeforeNodeAddedResult}if(curToNodeChild.actualize){curToNodeChild=curToNodeChild.actualize(fromEl.ownerDocument||doc)}addChild(fromEl,curToNodeChild);handleNodeAdded(curToNodeChild)}}curToNodeChild=toNextSibling;curFromNodeChild=fromNextSibling}cleanupFromEl(fromEl,curFromNodeChild,curFromNodeKey);var specialElHandler=specialElHandlers[fromEl.nodeName];if(specialElHandler){specialElHandler(fromEl,toEl)}}var morphedNode=fromNode;var morphedNodeType=morphedNode.nodeType;var toNodeType=toNode.nodeType;if(!childrenOnly){if(morphedNodeType===ELEMENT_NODE){if(toNodeType===ELEMENT_NODE){if(!compareNodeNames(fromNode,toNode)){onNodeDiscarded(fromNode);morphedNode=moveChildren(fromNode,createElementNS(toNode.nodeName,toNode.namespaceURI))}}else{morphedNode=toNode}}else if(morphedNodeType===TEXT_NODE||morphedNodeType===COMMENT_NODE){if(toNodeType===morphedNodeType){if(morphedNode.nodeValue!==toNode.nodeValue){morphedNode.nodeValue=toNode.nodeValue}return morphedNode}else{morphedNode=toNode}}}if(morphedNode===toNode){onNodeDiscarded(fromNode)}else{if(toNode.isSameNode&&toNode.isSameNode(morphedNode)){return}morphEl(morphedNode,toNode,childrenOnly);if(keyedRemovalList){for(var i=0,len=keyedRemovalList.length;i<len;i++){var elToRemove=fromNodesLookup[keyedRemovalList[i]];if(elToRemove){removeNode(elToRemove,elToRemove.parentNode,false)}}}}if(!childrenOnly&&morphedNode!==fromNode&&fromNode.parentNode){if(morphedNode.actualize){morphedNode=morphedNode.actualize(fromNode.ownerDocument||doc)}fromNode.parentNode.replaceChild(morphedNode,fromNode)}return morphedNode}}var morphdom=morphdomFactory(morphAttrs);return morphdom});
 
-      /* ── App State ── */
       const state = {
         overview: null,
         agents: [],
         tasks: [],
         selectedTaskId: null,
         board: null,
+        viewMode: "tasks",
         drawer: null,
         pollHandle: null,
         taskDraft: null,
@@ -895,7 +883,6 @@
         prevAgentIds: null,
       };
 
-      /* ── DOM Helpers ── */
       function patchHtml(container, newHtml) {
         const wrapper = document.createElement(container.tagName || "div");
         wrapper.innerHTML = newHtml;
@@ -995,7 +982,6 @@
         return response.json();
       }
 
-      /* ── Node Position Persistence ── */
       function saveNodePositions() {
         if (state.selectedTaskId) {
           try {
@@ -1017,12 +1003,9 @@
         }
       }
 
-      /* ── Simple Force Layout ── */
       function computeForceLayout(agents, dispatches, width, height) {
         const pad = 80;
         const positions = {};
-
-        // Initialize in circle
         agents.forEach((agent, i) => {
           const existing = state.nodePositions[agent.id];
           if (existing && existing.x > 0 && existing.y > 0) {
@@ -1037,21 +1020,14 @@
             };
           }
         });
-
         if (agents.length <= 1) return positions;
-
-        // Build edge set
         const edges = dispatches
           .filter(d => positions[d.from_agent_id] && positions[d.to_agent_id])
           .map(d => [d.from_agent_id, d.to_agent_id]);
-
-        // Run iterations
         const ids = agents.map(a => a.id);
         for (let iter = 0; iter < 40; iter++) {
           const forces = {};
           ids.forEach(id => { forces[id] = { fx: 0, fy: 0 }; });
-
-          // Repulsion between all pairs
           for (let i = 0; i < ids.length; i++) {
             for (let j = i + 1; j < ids.length; j++) {
               const a = positions[ids[i]];
@@ -1069,8 +1045,6 @@
               forces[ids[j]].fy -= fy;
             }
           }
-
-          // Attraction along edges
           edges.forEach(([a, b]) => {
             const pa = positions[a];
             const pb = positions[b];
@@ -1086,15 +1060,11 @@
             forces[b].fx -= fx;
             forces[b].fy -= fy;
           });
-
-          // Center gravity
           ids.forEach(id => {
             const p = positions[id];
             forces[id].fx += (width / 2 - p.x) * 0.002;
             forces[id].fy += (height / 2 - p.y) * 0.002;
           });
-
-          // Apply with damping
           const damping = 0.3;
           ids.forEach(id => {
             const p = positions[id];
@@ -1104,11 +1074,9 @@
             p.y = Math.max(pad, Math.min(height - pad, p.y));
           });
         }
-
         return positions;
       }
 
-      /* ── Render: Status Strip ── */
       function renderStatusStrip() {
         const container = document.getElementById("status-strip");
         const overview = state.overview;
@@ -1129,7 +1097,6 @@
         `).join(""));
       }
 
-      /* ── Render: Task Select ── */
       function renderTaskSelect() {
         const select = document.getElementById("task-select");
         const tasks = state.tasks;
@@ -1147,7 +1114,6 @@
         select.value = state.selectedTaskId || tasks[0]?.id || "";
       }
 
-      /* ── Classify Agent ── */
       function classifyAgent(agent, board) {
         const sessions = board.sessions.filter(s => s.agent_id === agent.id);
         const dispatches = board.dispatches.filter(d => d.from_agent_id === agent.id || d.to_agent_id === agent.id);
@@ -1177,7 +1143,6 @@
         return [];
       }
 
-      /* ── Render: Timeline ── */
       function renderTimeline(stages) {
         if (!stages.length) {
           return `<div class="empty-state">这个任务还没有发布阶段计划。</div>`;
@@ -1194,7 +1159,6 @@
         }).join("")}</div>`;
       }
 
-      /* ── Render: Canvas ── */
       function getCanvasSize() {
         const shell = document.querySelector(".canvas-shell");
         if (!shell) return { width: 760, height: 520 };
@@ -1210,12 +1174,9 @@
             </div></div>
           `;
         }
-
         const { width: cw, height: ch } = getCanvasSize();
         const containerWidth = Math.max(600, cw);
         const containerHeight = Math.max(400, ch);
-
-        // Determine if we need to recompute layout
         const currentIds = agents.map(a => a.id).sort().join(",");
         const needsLayout = state.prevAgentIds !== currentIds;
         if (needsLayout) {
@@ -1224,8 +1185,6 @@
           state.prevAgentIds = currentIds;
           saveNodePositions();
         }
-
-        // Ensure all agents have positions
         agents.forEach((agent, i) => {
           if (!state.nodePositions[agent.id]) {
             const angle = (Math.PI * 2 * i) / agents.length - Math.PI / 2;
@@ -1235,12 +1194,8 @@
             };
           }
         });
-
         const activeDispatches = board.dispatches.filter(d => ["pending", "accepted", "running"].includes(d.status));
-
-        // SVG arrow marker + connection lines
         const arrowDef = `<defs><marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="rgba(100,116,139,0.5)"/></marker></defs>`;
-
         const lines = activeDispatches.map(d => {
           const from = state.nodePositions[d.from_agent_id];
           const to = state.nodePositions[d.to_agent_id];
@@ -1250,7 +1205,6 @@
           const cls = d.status === "pending" ? "conn-pending" : "";
           return `<path data-from="${escapeHtml(d.from_agent_id)}" data-to="${escapeHtml(d.to_agent_id)}" d="M ${from.x} ${from.y} Q ${cx} ${cy} ${to.x} ${to.y}" fill="none" stroke="rgba(100,116,139,0.3)" stroke-width="2" stroke-linecap="round" marker-end="url(#arrowhead)" class="${cls}"/>`;
         }).join("");
-
         const dispatchCards = activeDispatches.map(d => {
           const from = state.nodePositions[d.from_agent_id];
           const to = state.nodePositions[d.to_agent_id];
@@ -1267,7 +1221,6 @@
             </button>
           `;
         }).join("");
-
         const nodes = agents.map(agent => {
           const pos = state.nodePositions[agent.id];
           const mode = classifyAgent(agent, board);
@@ -1278,7 +1231,6 @@
             </div>
           `;
         }).join("");
-
         return `
           <div class="task-hero">
             <h2 class="task-hero-title">${escapeHtml(board.task.title)}</h2>
@@ -1297,7 +1249,6 @@
         `;
       }
 
-      /* ── Render: Summary Rail ── */
       function renderSummaryRail(board) {
         const avatarText = v => String(v || "?").slice(0, 2).toUpperCase();
         const participants = board.participant_agents.map(agent => {
@@ -1309,7 +1260,6 @@
             </button>
           `;
         }).join("");
-
         const activityItems = board.activity.filter(i => i.kind === "dispatch" || i.kind === "system");
         const feed = activityItems.length ? activityItems.map(item => {
           if (item.kind === "dispatch") {
@@ -1350,7 +1300,6 @@
             </button>
           `;
         }).join("") : `<div class="empty-state">暂无任务活动。</div>`;
-
         return `
           <section class="surface">
             <div class="panel-header"><div class="panel-title">任务 Agent</div></div>
@@ -1367,9 +1316,20 @@
         `;
       }
 
-      /* ── Render: Board ── */
       function renderBoard() {
         const container = document.getElementById("board");
+        if (state.viewMode === "agents") {
+          patchHtml(container, `
+            <section class="surface" style="grid-column: 1 / -1; overflow: hidden;">
+              <iframe
+                title="Agent 管理"
+                src="/static/agents_panel.html"
+                style="width:100%; min-height: calc(100vh - 240px); border:0; display:block; background:transparent;"
+              ></iframe>
+            </section>
+          `);
+          return;
+        }
         if (!state.selectedTaskId) {
           patchHtml(container, `<section class="surface"><div class="panel-body"><div class="empty-state">创建一个任务以启动控制闭环。</div></div></section>`);
           return;
@@ -1378,7 +1338,6 @@
           patchHtml(container, `<section class="surface"><div class="panel-body"><div class="empty-state">正在加载任务看板...</div></div></section>`);
           return;
         }
-
         const stages = normalizeStagePlan(state.board.task);
         patchHtml(container, `
           <section class="surface" id="timeline-panel">
@@ -1394,43 +1353,34 @@
         `);
       }
 
-      /* ── Canvas Drag ── */
       function initCanvasDrag() {
         const board = document.getElementById("board");
         if (!board) return;
-
         board.addEventListener("pointerdown", (e) => {
           const nodeBtn = e.target.closest(".agent-node button[data-agent-id]");
           if (!nodeBtn) return;
           const agentId = nodeBtn.dataset.agentId;
           const pos = state.nodePositions[agentId];
           if (!pos) return;
-
           e.preventDefault();
           const node = nodeBtn.closest(".agent-node");
           node.dataset.dragging = "true";
-
           const shell = document.querySelector(".canvas-shell");
           const rect = shell.getBoundingClientRect();
-
           state.canvasDrag = {
             agentId,
             offsetX: e.clientX - (rect.left + pos.x),
             offsetY: e.clientY - (rect.top + pos.y),
             shellRect: rect,
           };
-
           nodeBtn.setPointerCapture(e.pointerId);
         });
-
         board.addEventListener("pointermove", (e) => {
           if (!state.canvasDrag) return;
           const { agentId, offsetX, offsetY, shellRect } = state.canvasDrag;
           const newX = e.clientX - shellRect.left - offsetX;
           const newY = e.clientY - shellRect.top - offsetY;
           state.nodePositions[agentId] = { x: newX, y: newY };
-
-          // Direct DOM update for smoothness
           const node = document.getElementById(`anode-${agentId}`);
           if (node) {
             node.style.left = `${newX}px`;
@@ -1438,8 +1388,7 @@
           }
           updateConnections();
         });
-
-        board.addEventListener("pointerup", (e) => {
+        board.addEventListener("pointerup", () => {
           if (!state.canvasDrag) return;
           const node = document.getElementById(`anode-${state.canvasDrag.agentId}`);
           if (node) node.dataset.dragging = "false";
@@ -1468,7 +1417,6 @@
         });
       }
 
-      /* ── Task Modal ── */
       function captureTaskDraft() {
         const shell = document.getElementById("task-modal-shell");
         if (!shell.classList.contains("open")) return state.taskDraft;
@@ -1528,7 +1476,6 @@
         state.taskDraft = null;
       }
 
-      /* ── Drawer ── */
       function openDrawer(title, html) {
         document.getElementById("drawer-title").textContent = title;
         patchHtml(document.getElementById("drawer-body"), html);
@@ -1624,7 +1571,6 @@
         `);
       }
 
-      /* ── Data Loading ── */
       async function loadTasksAndAgents() {
         const [tasks, agents] = await Promise.all([
           fetchJson("/api/tasks"),
@@ -1667,12 +1613,10 @@
         const checks = [...document.querySelectorAll("#task-agent-checks input:checked")];
         const participantAgentIds = checks.map(i => i.value);
         const status = document.getElementById("task-form-status");
-
         if (!title || !entryAgentId || !initialInput) {
           status.textContent = "标题、入口 Agent 和初始提示词为必填项。";
           return;
         }
-
         status.textContent = "创建中...";
         captureTaskDraft();
         try {
@@ -1706,7 +1650,6 @@
         }
       }
 
-      /* ── Event Handlers ── */
       function handleBoardClick(event) {
         if (state.canvasDrag) return;
         const agentBtn = event.target.closest("[data-agent-id]");
@@ -1726,6 +1669,10 @@
           renderBoard();
         });
         document.getElementById("new-task-button").addEventListener("click", openTaskModal);
+        document.getElementById("agent-management-button").addEventListener("click", () => {
+          state.viewMode = state.viewMode === "agents" ? "tasks" : "agents";
+          renderBoard();
+        });
         document.getElementById("close-task-modal-button").addEventListener("click", closeTaskModal);
         document.getElementById("task-modal-shell").addEventListener("click", (e) => {
           if (e.target.id === "task-modal-shell") closeTaskModal();
@@ -1738,7 +1685,6 @@
         initCanvasDrag();
       }
 
-      /* ── Boot ── */
       async function boot() {
         bindEvents();
         await refreshAll();

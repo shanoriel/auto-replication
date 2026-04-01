@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import base64
+import binascii
+from pathlib import Path
+
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -7,6 +11,8 @@ from fastapi.staticfiles import StaticFiles
 from .catalog import find_by_id
 from .config import settings
 from .schemas import (
+    AgentManagementCreate,
+    AgentManagementUpdate,
     AgentHeartbeat,
     AgentRegistration,
     DispatchCreate,
@@ -14,6 +20,8 @@ from .schemas import (
     MessageAck,
     MessageCreate,
     RuntimeHeartbeat,
+    RuntimeAgentOpUpdate,
+    RuntimeAgentSync,
     RuntimeInboxUpdate,
     RuntimeRegistration,
     SessionClaim,
@@ -25,7 +33,16 @@ from .schemas import (
     TaskCreate,
     TaskUpdate,
 )
-from .service import catalog_snapshot, db, ensure_layout, health_snapshot, overview_snapshot, task_board_snapshot
+from .service import (
+    catalog_snapshot,
+    db,
+    ensure_layout,
+    health_snapshot,
+    online_runtime_conflict,
+    overview_snapshot,
+    runtime_is_online,
+    task_board_snapshot,
+)
 from .task_bootstrap import bootstrap_primary_task_session
 
 
@@ -37,6 +54,134 @@ app.mount("/static", StaticFiles(directory=settings.static_dir), name="static")
 
 VALID_DISPATCH_KINDS = {"work-order", "clarification-request"}
 VALID_DISPATCH_STATUSES = {"pending", "accepted", "running", "replied", "failed"}
+
+
+def _avatar_extension_from_data_url(data_url: str) -> str:
+    header = data_url.split(",", 1)[0]
+    if "image/png" in header:
+        return ".png"
+    if "image/jpeg" in header:
+        return ".jpg"
+    if "image/webp" in header:
+        return ".webp"
+    raise HTTPException(status_code=400, detail="unsupported avatar image type")
+
+
+def _cache_avatar_data_url(runtime_id: str, agent_id: str, data_url: str | None) -> str | None:
+    if not data_url:
+        return None
+    if "," not in data_url:
+        raise HTTPException(status_code=400, detail="invalid avatar data url")
+    header, encoded = data_url.split(",", 1)
+    if ";base64" not in header:
+        raise HTTPException(status_code=400, detail="avatar must be base64 data url")
+    try:
+        payload = base64.b64decode(encoded, validate=True)
+    except binascii.Error as exc:
+        raise HTTPException(status_code=400, detail="invalid avatar payload") from exc
+    extension = _avatar_extension_from_data_url(data_url)
+    target_dir = settings.agent_asset_dir / runtime_id / agent_id
+    target_dir.mkdir(parents=True, exist_ok=True)
+    for existing in target_dir.iterdir():
+        if existing.is_file():
+            existing.unlink()
+    filename = f"avatar{extension}"
+    (target_dir / filename).write_bytes(payload)
+    return f"/api/agent-assets/{runtime_id}/{agent_id}/{filename}"
+
+
+def _build_agent_management_agent(agent: dict[str, object], pending_op: dict[str, object] | None) -> dict[str, object]:
+    metadata = dict(agent.get("metadata") or {})
+    pending_payload = dict(pending_op["payload"]) if pending_op else {}
+    effective = {
+        "id": agent["id"],
+        "runtime_id": agent.get("runtime_id"),
+        "name": pending_payload.get("name", agent.get("name")),
+        "status": agent.get("status"),
+        "summary": pending_payload.get("summary", agent.get("summary")),
+        "role_hint": pending_payload.get("role_hint", metadata.get("role_hint") or agent.get("role")),
+        "model": pending_payload.get("model", metadata.get("model")),
+        "enabled": pending_payload.get("enabled", metadata.get("enabled", True)),
+        "agent_md": pending_payload.get("agent_md", metadata.get("agent_md", "")),
+        "avatar_url": pending_payload.get("avatar_url", metadata.get("avatar_url")),
+        "enabled_runtime_skills": pending_payload.get(
+            "enabled_runtime_skills",
+            metadata.get("enabled_runtime_skills", []),
+        ),
+        "enabled_agent_skills": pending_payload.get(
+            "enabled_agent_skills",
+            metadata.get("enabled_agent_skills", []),
+        ),
+        "runtime_skill_inventory": metadata.get("runtime_skill_inventory", []),
+        "agent_skill_inventory": metadata.get("agent_skill_inventory", []),
+        "prompt_preview": metadata.get("prompt_preview", {}),
+        "present": metadata.get("present", True),
+        "applying": pending_op is not None,
+        "pending_op": pending_op,
+    }
+    return effective
+
+
+def _pending_agent_stub(runtime_id: str, pending_op: dict[str, object]) -> dict[str, object]:
+    payload = dict(pending_op["payload"])
+    return {
+        "id": pending_op["agent_id"],
+        "runtime_id": runtime_id,
+        "name": payload.get("name") or pending_op["agent_id"],
+        "status": "idle",
+        "summary": payload.get("summary"),
+        "role_hint": payload.get("role_hint"),
+        "model": payload.get("model"),
+        "enabled": payload.get("enabled", True),
+        "agent_md": payload.get("agent_md", ""),
+        "avatar_url": payload.get("avatar_url"),
+        "enabled_runtime_skills": payload.get("enabled_runtime_skills", []),
+        "enabled_agent_skills": payload.get("enabled_agent_skills", []),
+        "runtime_skill_inventory": [],
+        "agent_skill_inventory": [],
+        "prompt_preview": {},
+        "present": True,
+        "applying": True,
+        "pending_op": pending_op,
+    }
+
+
+def _agent_management_snapshot(runtime_id: str) -> dict[str, object]:
+    runtime = db.get_runtime(runtime_id)
+    if runtime is None:
+        raise HTTPException(status_code=404, detail="Runtime not found")
+    shared = dict(runtime.get("capabilities") or {}).get("agent_management") or {}
+    agents = db.list_runtime_agents(runtime_id)
+    pending_ops = db.list_runtime_agent_ops(runtime_id, statuses=["pending", "claimed"])
+    pending_by_agent: dict[str, dict[str, object]] = {}
+    for item in pending_ops:
+        pending_by_agent[item["agent_id"]] = item
+    rendered_agents: list[dict[str, object]] = []
+    seen_ids: set[str] = set()
+    for agent in agents:
+        metadata = dict(agent.get("metadata") or {})
+        if not metadata.get("present", True) and agent["id"] not in pending_by_agent:
+            continue
+        rendered_agents.append(_build_agent_management_agent(agent, pending_by_agent.get(agent["id"])))
+        seen_ids.add(str(agent["id"]))
+    for pending in pending_ops:
+        if pending["agent_id"] in seen_ids:
+            continue
+        rendered_agents.append(_pending_agent_stub(runtime_id, pending))
+    rendered_agents.sort(key=lambda item: str(item.get("name") or item["id"]).lower())
+    available_models = list(shared.get("available_models") or [])
+    if not available_models:
+        available_models = [item["id"] for item in catalog_snapshot()["models"]]
+    return {
+        "runtime": {
+            **runtime,
+            "is_online": runtime_is_online(runtime),
+            "shared_skills": list(shared.get("shared_skills") or []),
+            "available_models": available_models,
+        },
+        "agents": rendered_agents,
+        "pending_ops": pending_ops,
+    }
 
 
 @app.get("/health")
@@ -52,6 +197,14 @@ def index() -> FileResponse:
     return FileResponse(index_path)
 
 
+@app.get("/agents")
+def agent_management_page() -> FileResponse:
+    page_path = settings.static_dir / "agents.html"
+    if not page_path.exists():
+        raise HTTPException(status_code=404, detail="Agent management UI not found")
+    return FileResponse(page_path)
+
+
 @app.get("/api/catalog")
 def catalog() -> dict[str, object]:
     return catalog_snapshot()
@@ -64,11 +217,28 @@ def overview() -> dict[str, object]:
 
 @app.get("/api/runtimes")
 def list_runtimes() -> list[dict[str, object]]:
-    return db.list_runtimes()
+    return [{**item, "is_online": runtime_is_online(item)} for item in db.list_runtimes()]
+
+
+@app.get("/api/agent-assets/{runtime_id}/{agent_id}/{filename}")
+def get_agent_asset(runtime_id: str, agent_id: str, filename: str) -> FileResponse:
+    target = settings.agent_asset_dir / runtime_id / agent_id / filename
+    if not target.exists() or not target.is_file():
+        raise HTTPException(status_code=404, detail="Agent asset not found")
+    return FileResponse(target)
 
 
 @app.post("/api/runtimes/register")
 def register_runtime(payload: RuntimeRegistration) -> dict[str, object]:
+    conflict = online_runtime_conflict(payload.machine_id, payload.runtime_id)
+    if conflict is not None:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"machine {payload.machine_id} already has online runtime "
+                f"{conflict['id']}"
+            ),
+        )
     return db.upsert_runtime(
         runtime_id=payload.runtime_id,
         machine_id=payload.machine_id,
@@ -84,6 +254,18 @@ def register_runtime(payload: RuntimeRegistration) -> dict[str, object]:
 
 @app.post("/api/runtimes/{runtime_id}/heartbeat")
 def runtime_heartbeat(runtime_id: str, payload: RuntimeHeartbeat) -> dict[str, object]:
+    current = db.get_runtime(runtime_id)
+    if current is None:
+        raise HTTPException(status_code=404, detail="Runtime not found")
+    conflict = online_runtime_conflict(str(current.get("machine_id") or ""), runtime_id)
+    if conflict is not None:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"machine {current['machine_id']} already has online runtime "
+                f"{conflict['id']}"
+            ),
+        )
     runtime = db.update_runtime_heartbeat(
         runtime_id,
         status=payload.status,
@@ -91,9 +273,127 @@ def runtime_heartbeat(runtime_id: str, payload: RuntimeHeartbeat) -> dict[str, o
         labels=payload.labels,
         capabilities=payload.capabilities,
     )
+    return runtime
+
+
+@app.get("/api/agent-management/runtimes")
+def list_agent_management_runtimes() -> list[dict[str, object]]:
+    runtimes = []
+    for runtime in db.list_runtimes():
+        if not runtime_is_online(runtime):
+            continue
+        shared = dict(runtime.get("capabilities") or {}).get("agent_management") or {}
+        runtimes.append(
+            {
+                **runtime,
+                "is_online": True,
+                "shared_skills": list(shared.get("shared_skills") or []),
+                "available_models": list(shared.get("available_models") or []) or [item["id"] for item in catalog_snapshot()["models"]],
+                "agent_count": sum(
+                    1
+                    for agent in db.list_runtime_agents(runtime["id"])
+                    if dict(agent.get("metadata") or {}).get("present", True)
+                ),
+            }
+        )
+    return runtimes
+
+
+@app.get("/api/agent-management/runtimes/{runtime_id}")
+def get_agent_management_runtime(runtime_id: str) -> dict[str, object]:
+    snapshot = _agent_management_snapshot(runtime_id)
+    runtime = dict(snapshot["runtime"])
+    if not runtime.get("is_online"):
+        raise HTTPException(status_code=404, detail="Runtime not online")
+    return snapshot
+
+
+@app.post("/api/runtimes/{runtime_id}/agent-sync")
+def runtime_agent_sync(runtime_id: str, payload: RuntimeAgentSync) -> dict[str, object]:
+    runtime = db.sync_runtime_agent_snapshot(
+        runtime_id,
+        shared_skills=[item.model_dump() for item in payload.shared_skills],
+        available_models=list(payload.available_models),
+        agents=[item.model_dump() for item in payload.agents],
+    )
     if runtime is None:
         raise HTTPException(status_code=404, detail="Runtime not found")
-    return runtime
+    return {"ok": True, "runtime_id": runtime_id, "agent_count": len(payload.agents)}
+
+
+@app.get("/api/runtime/agent-op-queue")
+def runtime_agent_op_queue(runtime_id: str, status: str = "pending") -> list[dict[str, object]]:
+    statuses = [part.strip() for part in status.split(",") if part.strip()]
+    return db.list_runtime_agent_ops(runtime_id, statuses=statuses or ["pending"])
+
+
+@app.patch("/api/runtime/agent-ops/{op_id}")
+def patch_runtime_agent_op(op_id: str, payload: RuntimeAgentOpUpdate) -> dict[str, object]:
+    item = db.update_runtime_agent_op(op_id, status=payload.status, error_text=payload.error_text)
+    if item is None:
+        raise HTTPException(status_code=404, detail="Runtime agent op not found")
+    return item
+
+
+@app.post("/api/agent-management/runtimes/{runtime_id}/agents")
+def create_managed_agent(runtime_id: str, payload: AgentManagementCreate) -> dict[str, object]:
+    runtime = db.get_runtime(runtime_id)
+    if runtime is None:
+        raise HTTPException(status_code=404, detail="Runtime not found")
+    avatar_url = _cache_avatar_data_url(runtime_id, payload.agent_id, payload.avatar_data_url)
+    op = db.create_runtime_agent_op(
+        runtime_id=runtime_id,
+        agent_id=payload.agent_id,
+        op_type="create_agent",
+        payload={
+            "agent_id": payload.agent_id,
+            "name": payload.name,
+            "model": payload.model,
+            "summary": payload.summary,
+            "enabled": payload.enabled,
+            "agent_md": payload.agent_md,
+            "enabled_runtime_skills": payload.enabled_runtime_skills,
+            "enabled_agent_skills": payload.enabled_agent_skills,
+            "avatar_url": avatar_url,
+            "avatar_data_url": payload.avatar_data_url,
+            "role_hint": payload.role_hint,
+        },
+    )
+    return {"ok": True, "op": op, "snapshot": _agent_management_snapshot(runtime_id)}
+
+
+@app.patch("/api/agent-management/agents/{agent_id}")
+def update_managed_agent(agent_id: str, payload: AgentManagementUpdate) -> dict[str, object]:
+    agent = db.get_agent(agent_id)
+    if agent is None or not agent.get("runtime_id"):
+        raise HTTPException(status_code=404, detail="Agent not found")
+    runtime_id = str(agent["runtime_id"])
+    avatar_url = _cache_avatar_data_url(runtime_id, agent_id, payload.avatar_data_url) if payload.avatar_data_url else dict(agent.get("metadata") or {}).get("avatar_url")
+    enabled_before = bool(dict(agent.get("metadata") or {}).get("enabled", True))
+    op_type = "update_agent_config"
+    if enabled_before and not payload.enabled:
+        op_type = "disable_agent"
+    elif not enabled_before and payload.enabled:
+        op_type = "enable_agent"
+    op = db.create_runtime_agent_op(
+        runtime_id=runtime_id,
+        agent_id=agent_id,
+        op_type=op_type,
+        payload={
+            "agent_id": agent_id,
+            "name": payload.name,
+            "model": payload.model,
+            "summary": payload.summary,
+            "enabled": payload.enabled,
+            "agent_md": payload.agent_md,
+            "enabled_runtime_skills": payload.enabled_runtime_skills,
+            "enabled_agent_skills": payload.enabled_agent_skills,
+            "avatar_url": avatar_url,
+            "avatar_data_url": payload.avatar_data_url,
+            "role_hint": payload.role_hint,
+        },
+    )
+    return {"ok": True, "op": op, "snapshot": _agent_management_snapshot(runtime_id)}
 
 
 @app.get("/api/runtime/launch-queue")
@@ -336,6 +636,7 @@ def create_session(payload: SessionCreate) -> dict[str, object]:
     agent = db.get_agent(payload.agent_id)
     if agent is None:
         raise HTTPException(status_code=404, detail="Agent not found")
+    agent_metadata = dict(agent.get("metadata") or {})
     runtime = None
     if payload.runtime_id is not None:
         runtime = db.get_runtime(payload.runtime_id)
@@ -348,13 +649,16 @@ def create_session(payload: SessionCreate) -> dict[str, object]:
 
     catalog_data = catalog_snapshot()
     machine = find_by_id(catalog_data["machines"], payload.machine_id or agent.get("machine_id"))
-    preset = find_by_id(catalog_data["presets"], payload.preset_id)
-    model = find_by_id(catalog_data["models"], payload.model)
+    resolved_preset_id = payload.preset_id or agent_metadata.get("preset_id")
+    preset = find_by_id(catalog_data["presets"], resolved_preset_id)
+    resolved_model_id = payload.model or agent_metadata.get("model") or agent_metadata.get("default_model")
+    model = find_by_id(catalog_data["models"], resolved_model_id)
 
-    resolved_workspace = payload.workspace_path or (machine.get("workspace_path") if machine else None)
-    base_codex_home = payload.codex_home or (machine.get("codex_home") if machine else None)
+    runtime_caps = dict(runtime.get("capabilities") or {}) if runtime else {}
+    resolved_workspace = payload.workspace_path or (machine.get("workspace_path") if machine else runtime_caps.get("workspace_root"))
+    base_codex_home = payload.codex_home or (machine.get("codex_home") if machine else runtime_caps.get("codex_home_root"))
     resolved_codex_home = f"{base_codex_home}/presets/{preset['id']}" if base_codex_home and preset else base_codex_home
-    resolved_role = payload.role or agent.get("role")
+    resolved_role = payload.role or agent.get("role") or agent_metadata.get("role_hint")
     resolved_status = payload.status
     if payload.session_key and payload.dispatch_id is None:
         resolved_status = "idle"
@@ -375,8 +679,8 @@ def create_session(payload: SessionCreate) -> dict[str, object]:
         backend_kind=payload.backend_kind,
         backend_session_id=payload.backend_session_id,
         machine_id=payload.machine_id or agent.get("machine_id"),
-        preset_id=payload.preset_id,
-        model=model["id"] if model else payload.model,
+        preset_id=resolved_preset_id,
+        model=model["id"] if model else resolved_model_id,
         initial_prompt=payload.initial_prompt,
     )
     db.add_event(
@@ -390,8 +694,8 @@ def create_session(payload: SessionCreate) -> dict[str, object]:
             "title": payload.title,
             "role": resolved_role,
             "machine_id": payload.machine_id or agent.get("machine_id"),
-            "preset_id": payload.preset_id,
-            "model": model["id"] if model else payload.model,
+            "preset_id": resolved_preset_id,
+            "model": model["id"] if model else resolved_model_id,
         },
     )
     if payload.dispatch_id is not None:

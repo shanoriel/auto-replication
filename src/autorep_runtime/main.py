@@ -8,12 +8,14 @@ import subprocess
 import sys
 import threading
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from .agent_store import LocalAgentStore
 from .dispatch_store import DispatchRoutingStore
 from .session_manager import CodexSessionBackend, LocalSessionStore, SessionBackend
 
@@ -42,6 +44,14 @@ def _http_json(
     )
     with urllib.request.urlopen(request, timeout=10) as response:
         return json.loads(response.read().decode("utf-8"))
+
+
+def _is_retryable_gateway_error(exc: Exception) -> bool:
+    if isinstance(exc, urllib.error.HTTPError):
+        return exc.code in {404, 408, 429} or exc.code >= 500
+    if isinstance(exc, urllib.error.URLError):
+        return True
+    return isinstance(exc, (ConnectionError, TimeoutError))
 
 
 @dataclass(frozen=True)
@@ -79,12 +89,28 @@ class RuntimeManager:
         self.codex_home_root = codex_home_root
         self.state_root = state_root
         self.dispatch_state_root = dispatch_state_root or default_dispatch_state_root(runtime_id)
-        self.agents = agents
+        self._seed_agents = agents
         self.poll_interval_secs = poll_interval_secs
         self._stop_event = threading.Event()
         self._active_sessions: dict[str, threading.Thread] = {}
+        self._active_session_agents: dict[str, str] = {}
         self._session_store = LocalSessionStore(self.state_root / "sessions")
         self._dispatch_store = DispatchRoutingStore(self.dispatch_state_root / "dispatch")
+        self._agent_store = LocalAgentStore(self.state_root, runtime_id=self.runtime_id)
+        self._agent_store.ensure_seed_agents(
+            [
+                {
+                    "agent_id": item.agent_id,
+                    "role": item.role,
+                    "preset_id": item.preset_id,
+                    "model": item.model,
+                    "summary": item.summary,
+                }
+                for item in self._seed_agents
+            ]
+        )
+        self._available_models: list[str] = []
+        self._runtime_registered = False
         self._backend_registry = backend_registry or {
             "codex": CodexSessionBackend(
                 workspace_root=self.workspace_root,
@@ -98,9 +124,25 @@ class RuntimeManager:
         self.state_root.mkdir(parents=True, exist_ok=True)
         self.dispatch_state_root.mkdir(parents=True, exist_ok=True)
         self._register_runtime()
-        self._register_agents()
+        self._available_models = self._fetch_available_models()
+        self._sync_agent_snapshot()
+        self._runtime_registered = True
         while not self._stop_event.is_set():
-            self._tick()
+            try:
+                if not self._runtime_registered:
+                    self._register_runtime()
+                    self._available_models = self._fetch_available_models()
+                    self._sync_agent_snapshot()
+                    self._runtime_registered = True
+                self._tick()
+            except Exception as exc:
+                if self._runtime_registered and self._handle_retryable_gateway_error(
+                    "runtime control plane sync",
+                    exc,
+                ):
+                    self._runtime_registered = False
+                else:
+                    raise
             self._stop_event.wait(self.poll_interval_secs)
 
     def stop(self) -> None:
@@ -108,11 +150,26 @@ class RuntimeManager:
 
     def _tick(self) -> None:
         self._heartbeat()
+        self._process_runtime_agent_ops()
+        self._sync_agent_snapshot()
         self._flush_dispatch_outbox()
         self._process_session_inputs()
         self._process_runtime_inbox()
         self._launch_pending_dispatches()
         self._launch_pending_sessions()
+
+    def _handle_retryable_gateway_error(self, context: str, exc: Exception) -> bool:
+        if not _is_retryable_gateway_error(exc):
+            return False
+        print(
+            (
+                f"[runtime:{self.runtime_id}] Gateway unavailable during {context}; "
+                f"retrying in {self.poll_interval_secs:.1f}s: {exc}"
+            ),
+            file=sys.stderr,
+            flush=True,
+        )
+        return True
 
     def _register_runtime(self) -> None:
         _http_json(
@@ -128,33 +185,31 @@ class RuntimeManager:
                 "host": self.host,
                 "base_url": None,
                 "labels": {"machine_id": self.machine_id},
-                "capabilities": {"session_execution": True, "dispatch_polling": True},
+                "capabilities": {
+                    "session_execution": True,
+                    "dispatch_polling": True,
+                    "agent_management": True,
+                    "workspace_root": str(self.workspace_root),
+                    "codex_home_root": str(self.codex_home_root),
+                },
             },
         )
 
-    def _register_agents(self) -> None:
-        for agent in self.agents:
-            _http_json(
-                self.gateway_url,
-                "/api/agents/register",
-                method="POST",
-                payload={
-                    "agent_id": agent.agent_id,
-                    "runtime_id": self.runtime_id,
-                    "machine_id": self.machine_id,
-                    "name": agent.agent_id,
-                    "kind": "codex",
-                    "host": self.host,
-                    "role": agent.role,
-                    "transport": "gateway-http",
-                    "status": "idle",
-                    "summary": agent.summary or f"{agent.role} agent on {self.machine_id}",
-                    "metadata": {
-                        "preset_id": agent.preset_id,
-                        "default_model": agent.model,
-                    },
-                },
-            )
+    def _fetch_available_models(self) -> list[str]:
+        try:
+            catalog = _http_json(self.gateway_url, "/api/catalog")
+        except Exception:
+            return []
+        return [str(item["id"]) for item in catalog.get("models", [])]
+
+    def _sync_agent_snapshot(self) -> None:
+        payload = self._agent_store.build_sync_payload(available_models=self._available_models)
+        _http_json(
+            self.gateway_url,
+            f"/api/runtimes/{self.runtime_id}/agent-sync",
+            method="POST",
+            payload=payload,
+        )
 
     def _heartbeat(self) -> None:
         active = len(self._active_sessions)
@@ -166,20 +221,75 @@ class RuntimeManager:
                 "status": "busy" if active else "idle",
                 "summary": f"{active} active session(s)",
                 "labels": {"machine_id": self.machine_id},
-                "capabilities": {"active_sessions": active},
+                "capabilities": {
+                    "active_sessions": active,
+                    "workspace_root": str(self.workspace_root),
+                    "codex_home_root": str(self.codex_home_root),
+                },
             },
         )
-        for agent in self.agents:
+        for agent in self._agent_store.list_agents():
+            agent_active = sum(1 for item in self._active_session_agents.values() if item == agent["agent_id"])
             _http_json(
                 self.gateway_url,
-                f"/api/agents/{agent.agent_id}/heartbeat",
+                f"/api/agents/{agent['agent_id']}/heartbeat",
                 method="POST",
                 payload={
-                    "status": "busy" if active else "idle",
+                    "status": "busy" if agent_active else "idle",
                     "summary": f"Attached to runtime {self.runtime_id}",
-                    "metadata": {"runtime_id": self.runtime_id, "active_sessions": active},
+                    "metadata": {
+                        "runtime_id": self.runtime_id,
+                        "active_sessions": agent_active,
+                        "enabled": agent.get("enabled", True),
+                        "model": agent.get("model"),
+                        "role_hint": agent.get("role_hint"),
+                    },
                 },
             )
+
+    def _start_session_worker(
+        self,
+        *,
+        session_id: str,
+        agent_id: str,
+        target,
+        args: tuple[Any, ...],
+    ) -> None:
+        worker = threading.Thread(target=target, args=args, daemon=True)
+        self._active_sessions[session_id] = worker
+        self._active_session_agents[session_id] = agent_id
+        worker.start()
+
+    def _finish_session_worker(self, session_id: str) -> None:
+        self._active_sessions.pop(session_id, None)
+        self._active_session_agents.pop(session_id, None)
+
+    def _process_runtime_agent_ops(self) -> None:
+        query = urllib.parse.urlencode({"runtime_id": self.runtime_id, "status": "pending"})
+        for item in _http_json(self.gateway_url, f"/api/runtime/agent-op-queue?{query}"):
+            op_id = str(item["id"])
+            _http_json(
+                self.gateway_url,
+                f"/api/runtime/agent-ops/{op_id}",
+                method="PATCH",
+                payload={"status": "claimed", "error_text": None},
+            )
+            try:
+                self._agent_store.apply_op(item)
+                self._sync_agent_snapshot()
+                _http_json(
+                    self.gateway_url,
+                    f"/api/runtime/agent-ops/{op_id}",
+                    method="PATCH",
+                    payload={"status": "applied", "error_text": None},
+                )
+            except Exception as exc:
+                _http_json(
+                    self.gateway_url,
+                    f"/api/runtime/agent-ops/{op_id}",
+                    method="PATCH",
+                    payload={"status": "failed", "error_text": str(exc)},
+                )
 
     def _launch_pending_dispatches(self) -> None:
         query = urllib.parse.urlencode({"runtime_id": self.runtime_id, "status": "pending"})
@@ -192,35 +302,33 @@ class RuntimeManager:
                 target_session_id = self._dispatch_store.outbound_session(dispatch["parent_dispatch_id"])
                 if not target_session_id or target_session_id in self._active_sessions:
                     continue
-                worker = threading.Thread(
+                target_session = self._require_session(target_session_id)
+                self._start_session_worker(
+                    session_id=target_session_id,
+                    agent_id=str(target_session["agent_id"]),
                     target=self._run_clarification_dispatch,
                     args=(target_session_id, dispatch["id"]),
-                    daemon=True,
                 )
-                self._active_sessions[target_session_id] = worker
-                worker.start()
                 continue
             session = self._create_session_for_dispatch(dispatch)
-            worker = threading.Thread(
+            self._start_session_worker(
+                session_id=str(session["id"]),
+                agent_id=str(session["agent_id"]),
                 target=self._run_dispatch_session,
                 args=(session["id"], dispatch["id"]),
-                daemon=True,
             )
-            self._active_sessions[session["id"]] = worker
-            worker.start()
 
     def _launch_pending_sessions(self) -> None:
         query = urllib.parse.urlencode({"runtime_id": self.runtime_id})
         for session in _http_json(self.gateway_url, f"/api/runtime/launch-queue?{query}"):
             if session["id"] in self._active_sessions:
                 continue
-            worker = threading.Thread(
+            self._start_session_worker(
+                session_id=str(session["id"]),
+                agent_id=str(session["agent_id"]),
                 target=self._run_initial_session,
                 args=(session["id"],),
-                daemon=True,
             )
-            self._active_sessions[session["id"]] = worker
-            worker.start()
 
     def _process_session_inputs(self) -> None:
         query = urllib.parse.urlencode({"runtime_id": self.runtime_id, "status": "pending"})
@@ -228,13 +336,12 @@ class RuntimeManager:
             session_id = session_input["session_id"]
             if session_id in self._active_sessions:
                 continue
-            worker = threading.Thread(
+            self._start_session_worker(
+                session_id=str(session_id),
+                agent_id=str(session_input["agent_id"]),
                 target=self._run_session_input,
                 args=(session_id, session_input["id"]),
-                daemon=True,
             )
-            self._active_sessions[session_id] = worker
-            worker.start()
 
     def _process_runtime_inbox(self) -> None:
         query = urllib.parse.urlencode({"runtime_id": self.runtime_id, "status": "pending"})
@@ -243,16 +350,16 @@ class RuntimeManager:
             session_id = self._dispatch_store.outbound_session(dispatch_id)
             if not session_id or session_id in self._active_sessions:
                 continue
-            worker = threading.Thread(
+            session = self._require_session(session_id)
+            self._start_session_worker(
+                session_id=str(session_id),
+                agent_id=str(session["agent_id"]),
                 target=self._run_runtime_inbox_item,
                 args=(session_id, item["id"]),
-                daemon=True,
             )
-            self._active_sessions[session_id] = worker
-            worker.start()
 
     def _create_session_for_dispatch(self, dispatch: dict[str, Any]) -> dict[str, Any]:
-        agent = next((item for item in self.agents if item.agent_id == dispatch["to_agent_id"]), None)
+        agent = self._agent_store.get_agent(str(dispatch["to_agent_id"]))
         if agent is None:
             raise RuntimeError(f"Dispatch {dispatch['id']} targets unmanaged agent {dispatch['to_agent_id']}")
         task = _http_json(self.gateway_url, f"/api/tasks/{dispatch['task_id']}")
@@ -262,19 +369,18 @@ class RuntimeManager:
             "/api/sessions",
             method="POST",
             payload={
-                "agent_id": agent.agent_id,
+                "agent_id": agent["agent_id"],
                 "runtime_id": self.runtime_id,
                 "task_id": dispatch["task_id"],
                 "dispatch_id": dispatch["id"],
                 "title": f"{dispatch['kind']}::{task['title']}",
-                "role": agent.role,
+                "role": agent.get("role_hint"),
                 "status": "created",
                 "summary": f"Auto-created for dispatch {dispatch['id']}",
                 "workspace_path": str(self.workspace_root),
                 "codex_home": str(self.codex_home_root),
                 "machine_id": self.machine_id,
-                "preset_id": agent.preset_id,
-                "model": agent.model,
+                "model": agent.get("model"),
                 "initial_prompt": prompt,
             },
         )
@@ -325,7 +431,7 @@ class RuntimeManager:
                 last_message_path=last_message_path,
             )
         finally:
-            self._active_sessions.pop(session_id, None)
+            self._finish_session_worker(session_id)
 
     def _run_dispatch_session(self, session_id: str, dispatch_id: str) -> None:
         try:
@@ -347,7 +453,7 @@ class RuntimeManager:
                 related_dispatch_id=dispatch_id,
             )
         finally:
-            self._active_sessions.pop(session_id, None)
+            self._finish_session_worker(session_id)
 
     def _run_clarification_dispatch(self, session_id: str, dispatch_id: str) -> None:
         try:
@@ -370,7 +476,7 @@ class RuntimeManager:
                 related_dispatch_id=dispatch_id,
             )
         finally:
-            self._active_sessions.pop(session_id, None)
+            self._finish_session_worker(session_id)
 
     def _run_runtime_inbox_item(self, session_id: str, item_id: str) -> None:
         try:
@@ -391,7 +497,7 @@ class RuntimeManager:
                 payload={"status": "processed"},
             )
         finally:
-            self._active_sessions.pop(session_id, None)
+            self._finish_session_worker(session_id)
 
     def _run_session_input(self, session_id: str, session_input_id: str) -> None:
         try:
@@ -448,7 +554,7 @@ class RuntimeManager:
                 },
             )
         finally:
-            self._active_sessions.pop(session_id, None)
+            self._finish_session_worker(session_id)
 
     def _process_local_session_input(
         self,
@@ -614,7 +720,7 @@ class RuntimeManager:
 
     def _resolve_agent_workspace(self, session: dict[str, Any]) -> Path:
         workspace_root = Path(session["workspace_path"])
-        workspace_name = str(session.get("preset_id") or session.get("agent_id") or session["id"])
+        workspace_name = str(session.get("agent_id") or session["id"])
         return workspace_root / workspace_name
 
     def _prepare_session_files(self, session: dict[str, Any]) -> None:
@@ -635,30 +741,11 @@ class RuntimeManager:
         )
         dispatch_wrapper.chmod(0o755)
         session["workspace_path"] = str(workspace_path)
-        if not session.get("preset_id"):
-            return
-        catalog = _http_json(self.gateway_url, "/api/catalog")
-        preset = next((item for item in catalog["presets"] if item["id"] == session.get("preset_id")), None)
-        if preset is None:
-            return
-        root_dir = Path(__file__).resolve().parents[2]
-        preset_agent_md = root_dir / preset["agent_md"]
-        if preset_agent_md.exists():
-            shutil.copyfile(preset_agent_md, workspace_path / "AGENTS.md")
-        preset_skills_dir = root_dir / preset["skills_profile"]
-        if preset_skills_dir.exists():
-            target_skills = codex_home / "skills"
-            for item in preset_skills_dir.iterdir():
-                destination = target_skills / item.name
-                if destination.exists():
-                    if destination.is_dir():
-                        shutil.rmtree(destination)
-                    else:
-                        destination.unlink()
-                if item.is_dir():
-                    shutil.copytree(item, destination)
-                else:
-                    shutil.copyfile(item, destination)
+        self._agent_store.prepare_session_files(
+            session,
+            workspace_path=workspace_path,
+            codex_home=codex_home,
+        )
 
     def _bootstrap_codex_home(self, codex_home: Path) -> None:
         source_home = Path.home() / ".codex"
@@ -902,8 +989,6 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
-    if not args.agent:
-        parser.error("at least one --agent is required")
     manager = RuntimeManager(
         gateway_url=args.gateway_url,
         runtime_id=args.runtime_id,

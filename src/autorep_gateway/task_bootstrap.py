@@ -17,15 +17,26 @@ def bootstrap_primary_task_session(
     catalog_data = catalog_snapshot()
     metadata = agent.get("metadata") or {}
     preset_id = str(metadata.get("preset_id") or "") or None
-    model_id = str(metadata.get("default_model") or "") or None
+    model_id = str(metadata.get("model") or metadata.get("default_model") or "") or None
     machine = find_by_id(catalog_data["machines"], agent.get("machine_id"))
+    runtime = db.get_runtime(str(agent.get("runtime_id"))) if agent.get("runtime_id") else None
     preset = find_by_id(catalog_data["presets"], preset_id)
     model = find_by_id(catalog_data["models"], model_id)
 
-    resolved_workspace = machine.get("workspace_path") if machine else None
-    base_codex_home = machine.get("codex_home") if machine else None
+    runtime_caps = dict(runtime.get("capabilities") or {}) if runtime else {}
+    resolved_workspace = (
+        machine.get("workspace_path")
+        if machine
+        else runtime_caps.get("workspace_root")
+    )
+    base_codex_home = (
+        machine.get("codex_home")
+        if machine
+        else runtime_caps.get("codex_home_root")
+    )
     resolved_codex_home = f"{base_codex_home}/presets/{preset['id']}" if base_codex_home and preset else base_codex_home
     resolved_model = model["id"] if model else model_id
+    resolved_role = agent.get("role") or metadata.get("role_hint")
 
     session = db.create_session(
         agent_id=str(agent["id"]),
@@ -34,7 +45,7 @@ def bootstrap_primary_task_session(
         dispatch_id=None,
         title=f"{task['title']}::primary",
         session_key=f"task:{task['id']}:agent:{agent['id']}:primary",
-        role=agent.get("role"),
+        role=resolved_role,
         status="idle",
         lifecycle_status="idle",
         summary="Primary task session created from task bootstrap",
@@ -56,7 +67,7 @@ def bootstrap_primary_task_session(
             "task_id": task["id"],
             "dispatch_id": None,
             "title": session["title"],
-            "role": agent.get("role"),
+            "role": resolved_role,
             "machine_id": agent.get("machine_id"),
             "preset_id": preset_id,
             "model": resolved_model,

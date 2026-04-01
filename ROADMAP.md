@@ -45,11 +45,14 @@ MVP 里 Runtime 通过轮询 Gateway 获取工作，不引入 websocket、消息
 
 ### 1.4 先支持简单工单协议，不做过度抽象
 
-MVP 只支持三类跨 Agent 协议对象：
+MVP 只支持两类跨 Agent 协议对象：
 
 - `work-order`
 - `clarification-request`
-- `result`
+
+并增加一个约束：
+
+- 每个 dispatch 都必须有正式回复
 
 ### 1.5 先把恢复性做进系统
 
@@ -82,12 +85,12 @@ MVP 只要求跑通一个非常小的双 Agent loop：
 
 MVP 的用户故事：
 
-1. 用户创建一个 task，例如“验证某个仓库能否在目标环境中跑通 smoke test”
+1. 用户创建一个 task，例如“验证某个仓库能否在目标环境中跑通 smoke test”，并指定入口 agent 与参与 agents
 2. `Research` 创建一个 `work-order` 发给 `Experiment`
 3. `Experiment Runtime` 拉到该工单，启动一个 session 执行
 4. 如果信息不足，返回 `clarification-request`
-5. 如果完成，返回 `result`
-6. `Research` 看到结果后决定结束或继续发下一个工单
+5. 如果完成，则对该 `work-order` 给出正式回复
+6. `Research` 看到回复后决定结束或继续发下一个工单
 
 这一步故意不要求完整论文复现。先用更小、更快的任务验证系统 loop。
 
@@ -119,17 +122,24 @@ MVP 的用户故事：
 2. 补齐最小 API 边界
 - Runtime 注册 / heartbeat
 - Agent 注册 / 列表
-- Task 创建 / 查看
-- Dispatch 创建 / 查询 / 状态更新
+- Task 创建 / 查看 / 更新
+- Dispatch 查询 / 状态更新
 - Session 创建 / 查看 / 消息注入 / 状态查询
 
-3. 把状态来源收口到 Gateway
-- UI 只读 Gateway 数据
-- Runtime 不再维护自己的权威状态副本
+3. 明确 Gateway 与 Runtime 的数据归属
+- Gateway 持有注册表、dispatch 契约、session_inputs 暂存、状态摘要
+- Runtime 持有 session 运行体、transcript、事件流
+- UI 读 Gateway 薄层数据；Session Detail drill-down 时 Gateway 通过 heartbeat hook 从 Runtime 按需拉取 transcript
+- 详见 DESIGN.md「设计决策：Gateway 与 Runtime 的数据归属与通信模型」
+
+4. 明确 Web 面板的主视角
+- 顶部展示全局状态
+- 主区域以 `Task` 为最高层级
+- `Agent / Dispatch / Session` 都作为 Task 的下层观察对象出现
 
 ### 3.4 验收标准
 
-- 可以通过 Gateway API 创建 task 和 dispatch
+- 可以通过 Gateway API 创建 task，并让系统内 agent 协作产生 dispatch
 - 可以在 Gateway 中看到 runtime、agent、session、dispatch 的结构化状态
 - 重启 Gateway 后，已有状态仍可恢复
 
@@ -153,7 +163,6 @@ MVP 的用户故事：
 
 - `work-order`
 - `clarification-request`
-- `result`
 
 并要求它们至少具备：
 
@@ -176,22 +185,23 @@ Runtime 每隔固定时间执行：
 2. 拉取分配给本机 agent 的 pending dispatch
 3. 对每个可执行 dispatch 创建 session
 4. 监听 session 结束或中断
-5. 将结果回写为 event、message、dispatch 状态
+5. 将结果或 clarification 回写为 event、message、dispatch 回复与状态
 
 ### 4.5 这一阶段故意不做
 
 - 多 Runtime 协同
 - 自动重试策略
 - Supervisor
-- 复杂 UI 编排
+- 除 task-centric 工作台以外的复杂 UI 编排
 - 多工单并发调度
 
 ### 4.6 验收标准
 
 - 一个 `Research` agent 能创建 `work-order`
 - 一个 `Experiment` agent 能收到并执行该工单
-- 能回传一个 `result`
+- 能对该 `work-order` 形成正式回复
 - Gateway UI / API 能完整看见整条链路
+- Gateway UI 已经具备 task-centric 的基本工作台形态
 - 失败时不会静默丢状态
 
 ---
@@ -254,7 +264,7 @@ Runtime 每隔固定时间执行：
 ### 6.4 验收标准
 
 - `Research` 能把 `work-order` 派发到另一台机器上的 `Experiment`
-- `Experiment` 完成后能把 `result` 回传到 Gateway
+- `Experiment` 完成后能对该 `work-order` 回写正式回复
 - 用户可以从 Gateway 统一观察两个 Runtime 的状态
 
 ---
@@ -279,7 +289,7 @@ Runtime 每隔固定时间执行：
 ### 7.3 验收标准
 
 - 至少一个真实实验目标可以被拆成多个工单逐步执行
-- 上层 Agent 可以根据 `result` 决定下一步派发
+- 上层 Agent 可以根据下层回复决定下一步派发
 - 失败与阻塞点能通过 `clarification-request` 回到上层
 
 ---
@@ -319,7 +329,7 @@ Runtime 每隔固定时间执行：
 - 先在本机用 API 驱动起来
 
 4. 跑通双 Agent 单机闭环
-- `Research -> work-order -> Experiment -> result`
+- `Research -> work-order -> Experiment -> reply`
 - 暂时不强求 clarification 分支一开始就完美
 
 5. 补 `clarification-request`
@@ -357,7 +367,7 @@ Runtime 每隔固定时间执行：
 
 1. Gateway 与 Runtime 角色边界清晰
 2. 单机双 Agent loop 稳定跑通
-3. dispatch 协议最少支持 `work-order`、`clarification-request`、`result`
+3. dispatch 协议最少支持 `work-order`、`clarification-request`，并要求 dispatch 有正式回复
 4. Runtime 能通过 heartbeat 和 poll loop 稳定执行工作
 5. session、dispatch、event、message 都可审计
 6. Runtime 或 session 失败后，系统可以恢复或人工接管

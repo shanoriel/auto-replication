@@ -208,6 +208,21 @@ class GatewayDB:
                     FOREIGN KEY(runtime_id) REFERENCES runtimes(id),
                     FOREIGN KEY(dispatch_id) REFERENCES dispatches(id)
                 );
+
+                CREATE TABLE IF NOT EXISTS runtime_agent_ops (
+                    id TEXT PRIMARY KEY,
+                    runtime_id TEXT NOT NULL,
+                    agent_id TEXT NOT NULL,
+                    op_type TEXT NOT NULL,
+                    payload_json TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    error_text TEXT,
+                    created_at TEXT NOT NULL,
+                    claimed_at TEXT,
+                    applied_at TEXT,
+                    updated_at TEXT NOT NULL,
+                    FOREIGN KEY(runtime_id) REFERENCES runtimes(id)
+                );
                 """
             )
             self._ensure_columns(connection)
@@ -480,6 +495,18 @@ class GatewayDB:
         with self.connect() as connection:
             row = connection.execute("SELECT * FROM agents WHERE id = ?", (agent_id,)).fetchone()
         return self._decode_agent(row) if row else None
+
+    def list_runtime_agents(self, runtime_id: str) -> list[dict[str, Any]]:
+        with self.connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT * FROM agents
+                WHERE runtime_id = ?
+                ORDER BY updated_at DESC, created_at DESC
+                """,
+                (runtime_id,),
+            ).fetchall()
+        return [self._decode_agent(row) for row in rows]
 
     def create_task(
         self,
@@ -1228,6 +1255,213 @@ class GatewayDB:
             )
         return self.get_runtime_inbox_item(item_id)
 
+    def create_runtime_agent_op(
+        self,
+        *,
+        runtime_id: str,
+        agent_id: str,
+        op_type: str,
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        record_id = str(uuid.uuid4())
+        now = utc_now()
+        with self.connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO runtime_agent_ops (
+                    id, runtime_id, agent_id, op_type, payload_json, status, error_text,
+                    created_at, claimed_at, applied_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    record_id,
+                    runtime_id,
+                    agent_id,
+                    op_type,
+                    _json_dumps(payload),
+                    "pending",
+                    None,
+                    now,
+                    None,
+                    None,
+                    now,
+                ),
+            )
+        return self.get_runtime_agent_op(record_id)
+
+    def list_runtime_agent_ops(
+        self,
+        runtime_id: str,
+        *,
+        statuses: list[str] | None = None,
+        agent_id: str | None = None,
+    ) -> list[dict[str, Any]]:
+        query = "SELECT * FROM runtime_agent_ops WHERE runtime_id = ?"
+        params: list[Any] = [runtime_id]
+        if agent_id is not None:
+            query += " AND agent_id = ?"
+            params.append(agent_id)
+        if statuses:
+            query += f" AND status IN ({','.join('?' for _ in statuses)})"
+            params.extend(statuses)
+        query += " ORDER BY created_at ASC"
+        with self.connect() as connection:
+            rows = connection.execute(query, tuple(params)).fetchall()
+        return [self._decode_runtime_agent_op(row) for row in rows]
+
+    def get_runtime_agent_op(self, op_id: str) -> dict[str, Any] | None:
+        with self.connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM runtime_agent_ops WHERE id = ?",
+                (op_id,),
+            ).fetchone()
+        return self._decode_runtime_agent_op(row) if row else None
+
+    def update_runtime_agent_op(
+        self,
+        op_id: str,
+        *,
+        status: str,
+        error_text: str | None = None,
+    ) -> dict[str, Any] | None:
+        current = self.get_runtime_agent_op(op_id)
+        if current is None:
+            return None
+        claimed_at = current["claimed_at"]
+        applied_at = current["applied_at"]
+        now = utc_now()
+        if status == "claimed" and claimed_at is None:
+            claimed_at = now
+        if status == "applied":
+            applied_at = now
+        with self.connect() as connection:
+            connection.execute(
+                """
+                UPDATE runtime_agent_ops
+                SET status = ?, error_text = ?, claimed_at = ?, applied_at = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                (
+                    status,
+                    error_text,
+                    claimed_at,
+                    applied_at,
+                    now,
+                    op_id,
+                ),
+            )
+        return self.get_runtime_agent_op(op_id)
+
+    def sync_runtime_agent_snapshot(
+        self,
+        runtime_id: str,
+        *,
+        shared_skills: list[dict[str, Any]],
+        available_models: list[str],
+        agents: list[dict[str, Any]],
+    ) -> dict[str, Any] | None:
+        runtime = self.get_runtime(runtime_id)
+        if runtime is None:
+            return None
+        now = utc_now()
+        next_capabilities = dict(runtime["capabilities"])
+        next_capabilities["agent_management"] = {
+            "shared_skills": shared_skills,
+            "available_models": available_models,
+            "synced_at": now,
+        }
+        incoming_ids = {str(item["agent_id"]) for item in agents}
+        with self.connect() as connection:
+            connection.execute(
+                """
+                UPDATE runtimes
+                SET capabilities_json = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                (_json_dumps(next_capabilities), now, runtime_id),
+            )
+            for snapshot in agents:
+                agent_id = str(snapshot["agent_id"])
+                existing = connection.execute(
+                    "SELECT created_at, kind, host, transport FROM agents WHERE id = ?",
+                    (agent_id,),
+                ).fetchone()
+                created_at = existing["created_at"] if existing else now
+                metadata = {
+                    "enabled": bool(snapshot.get("enabled", True)),
+                    "model": snapshot.get("model"),
+                    "agent_md": snapshot.get("agent_md") or "",
+                    "avatar_url": snapshot.get("avatar_url"),
+                    "enabled_runtime_skills": list(snapshot.get("enabled_runtime_skills") or []),
+                    "enabled_agent_skills": list(snapshot.get("enabled_agent_skills") or []),
+                    "runtime_skill_inventory": list(snapshot.get("runtime_skill_inventory") or []),
+                    "agent_skill_inventory": list(snapshot.get("agent_skill_inventory") or []),
+                    "prompt_preview": dict(snapshot.get("prompt_preview") or {}),
+                    "role_hint": snapshot.get("role_hint"),
+                    "present": bool(snapshot.get("present", True)),
+                }
+                connection.execute(
+                    """
+                    INSERT INTO agents (
+                        id, runtime_id, machine_id, name, kind, host, role, transport, status,
+                        summary, metadata_json, last_heartbeat_at, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(id) DO UPDATE SET
+                        runtime_id = excluded.runtime_id,
+                        machine_id = excluded.machine_id,
+                        name = excluded.name,
+                        kind = excluded.kind,
+                        host = excluded.host,
+                        role = excluded.role,
+                        transport = excluded.transport,
+                        status = excluded.status,
+                        summary = excluded.summary,
+                        metadata_json = excluded.metadata_json,
+                        last_heartbeat_at = excluded.last_heartbeat_at,
+                        updated_at = excluded.updated_at
+                    """,
+                    (
+                        agent_id,
+                        runtime_id,
+                        runtime.get("machine_id"),
+                        snapshot.get("name") or agent_id,
+                        existing["kind"] if existing and existing.get("kind") else "codex",
+                        existing["host"] if existing else None,
+                        snapshot.get("role_hint"),
+                        existing["transport"] if existing and existing.get("transport") else "gateway-http",
+                        snapshot.get("status") or "idle",
+                        snapshot.get("summary"),
+                        _json_dumps(metadata),
+                        now,
+                        created_at,
+                        now,
+                    ),
+                )
+            stale_rows = connection.execute(
+                "SELECT * FROM agents WHERE runtime_id = ?",
+                (runtime_id,),
+            ).fetchall()
+            for stale in stale_rows:
+                if stale["id"] in incoming_ids:
+                    continue
+                metadata = json.loads(stale["metadata_json"] or "{}")
+                metadata["present"] = False
+                connection.execute(
+                    """
+                    UPDATE agents
+                    SET status = ?, summary = ?, metadata_json = ?, updated_at = ?
+                    WHERE id = ?
+                    """,
+                    (
+                        "offline",
+                        "Agent not present in runtime snapshot",
+                        _json_dumps(metadata),
+                        now,
+                        stale["id"],
+                    ),
+                )
+        return self.get_runtime(runtime_id)
+
     def ack_message(self, message_id: str, status: str) -> dict[str, Any] | None:
         now = utc_now()
         with self.connect() as connection:
@@ -1328,6 +1562,11 @@ class GatewayDB:
         return decoded
 
     def _decode_runtime_inbox(self, row: dict[str, Any]) -> dict[str, Any]:
+        decoded = dict(row)
+        decoded["payload"] = json.loads(decoded.pop("payload_json") or "{}")
+        return decoded
+
+    def _decode_runtime_agent_op(self, row: dict[str, Any]) -> dict[str, Any]:
         decoded = dict(row)
         decoded["payload"] = json.loads(decoded.pop("payload_json") or "{}")
         return decoded

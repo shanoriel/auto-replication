@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+from datetime import datetime, timedelta, timezone
 
 from .catalog import load_catalog
 from .config import settings
@@ -15,6 +16,31 @@ db.repair_session_states()
 def ensure_layout() -> None:
     settings.data_dir.mkdir(parents=True, exist_ok=True)
     settings.static_dir.mkdir(parents=True, exist_ok=True)
+    settings.agent_asset_dir.mkdir(parents=True, exist_ok=True)
+
+
+def runtime_is_online(runtime: dict[str, Any], *, stale_after_seconds: int = 15) -> bool:
+    raw = runtime.get("last_heartbeat_at")
+    if not raw:
+        return False
+    try:
+        last = datetime.fromisoformat(str(raw))
+    except ValueError:
+        return False
+    if last.tzinfo is None:
+        last = last.replace(tzinfo=timezone.utc)
+    return datetime.now(timezone.utc) - last <= timedelta(seconds=stale_after_seconds)
+
+
+def online_runtime_conflict(machine_id: str, runtime_id: str | None = None) -> dict[str, Any] | None:
+    for runtime in db.list_runtimes():
+        if runtime.get("machine_id") != machine_id:
+            continue
+        if runtime_id and runtime.get("id") == runtime_id:
+            continue
+        if runtime_is_online(runtime):
+            return runtime
+    return None
 
 
 def health_snapshot() -> dict[str, Any]:
@@ -50,6 +76,14 @@ def overview_snapshot() -> dict[str, Any]:
     tasks = db.list_tasks()
     dispatches = db.list_dispatches()
     sessions = db.list_sessions()
+    online_runtimes = [item for item in runtimes if runtime_is_online(item)]
+    online_runtime_ids = {str(item.get("id")) for item in online_runtimes}
+    visible_agents = [
+        item
+        for item in agents
+        if str(item.get("runtime_id") or "") in online_runtime_ids
+        and dict(item.get("metadata") or {}).get("present", True)
+    ]
     active_agent_statuses = {"running", "working", "busy", "launching"}
     active_dispatch_statuses = {"pending", "accepted", "running"}
     active_task_statuses = {"created", "active", "running"}
@@ -60,13 +94,13 @@ def overview_snapshot() -> dict[str, Any]:
             "port": settings.port,
         },
         "runtimes": {
-            "total": len(runtimes),
-            "by_status": _count_by_status(runtimes),
+            "total": len(online_runtimes),
+            "by_status": _count_by_status(online_runtimes),
         },
         "agents": {
-            "total": len(agents),
-            "working": sum(1 for item in agents if str(item.get("status")) in active_agent_statuses),
-            "by_status": _count_by_status(agents),
+            "total": len(visible_agents),
+            "working": sum(1 for item in visible_agents if str(item.get("status")) in active_agent_statuses),
+            "by_status": _count_by_status(visible_agents),
         },
         "tasks": {
             "total": len(tasks),

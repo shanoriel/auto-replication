@@ -87,6 +87,56 @@ class TaskBootstrapTests(unittest.TestCase):
         self.assertEqual(queued_inputs[0]["session_id"], session["id"])
         self.assertEqual(queued_inputs[0]["payload"]["content"], "Start this task and delegate to experiment when ready.")
 
+    def test_bootstrap_falls_back_to_runtime_paths_when_machine_not_in_catalog(self) -> None:
+        self.db.upsert_runtime(
+            runtime_id="runtime-b",
+            machine_id="smoke-machine",
+            name="Runtime B",
+            status="idle",
+            summary=None,
+            host=None,
+            base_url=None,
+            labels={},
+            capabilities={
+                "workspace_root": "/tmp/smoke/workspaces",
+                "codex_home_root": "/tmp/smoke/codex-home",
+            },
+        )
+        self.db.upsert_agent(
+            agent_id="smoke-research",
+            runtime_id="runtime-b",
+            machine_id="smoke-machine",
+            name="Smoke Research",
+            kind="codex",
+            host=None,
+            role="research",
+            transport="gateway-http",
+            status="idle",
+            summary=None,
+            metadata={"model": "gpt-5.4-mini"},
+        )
+        task = self.db.create_task(
+            title="Runtime Path Fallback",
+            created_by="human",
+            entry_agent_id="smoke-research",
+            participant_agent_ids=["smoke-research"],
+            objective="Verify runtime path fallback.",
+            status="created",
+            summary=None,
+            stage_plan={},
+            metadata={},
+        )
+        agent = self.db.get_agent("smoke-research")
+        assert agent is not None
+        session = bootstrap_primary_task_session(
+            self.db,
+            task=task,
+            agent=agent,
+            initial_input="Smoke",
+        )
+        self.assertEqual(session["workspace_path"], "/tmp/smoke/workspaces")
+        self.assertEqual(session["codex_home"], "/tmp/smoke/codex-home")
+
 
 if __name__ == "__main__":
     unittest.main()

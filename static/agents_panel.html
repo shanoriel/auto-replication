@@ -1,0 +1,1096 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Agent 管理面板</title>
+    <style>
+      :root {
+        --paper: rgba(255, 255, 255, 0.88);
+        --paper-strong: #ffffff;
+        --ink: #1a2332;
+        --muted: #64748b;
+        --line: rgba(148, 163, 184, 0.22);
+        --accent: #3b82f6;
+        --accent-soft: rgba(59, 130, 246, 0.08);
+        --green: #22c55e;
+        --amber: #f59e0b;
+        --red: #ef4444;
+        --shadow: 0 1px 3px rgba(0,0,0,0.05), 0 8px 24px rgba(0,0,0,0.04);
+        --shadow-lg: 0 4px 12px rgba(0,0,0,0.06), 0 20px 48px rgba(0,0,0,0.08);
+        --radius: 12px;
+        --radius-lg: 16px;
+      }
+
+      * { box-sizing: border-box; }
+
+      html, body {
+        margin: 0;
+        min-height: 100%;
+        background: transparent;
+        color: var(--ink);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      button, input, select, textarea { font: inherit; }
+
+      button {
+        border: 0;
+        border-radius: 8px;
+        padding: 10px 16px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 600;
+        transition: background 0.15s ease, transform 0.1s ease;
+      }
+
+      button:active { transform: scale(0.97); }
+
+      input, select, textarea {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--paper-strong);
+        color: var(--ink);
+        padding: 10px 12px;
+        font-size: 14px;
+      }
+
+      input:focus, select:focus, textarea:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px var(--accent-soft);
+      }
+
+      textarea {
+        resize: vertical;
+        min-height: 120px;
+      }
+
+      .surface {
+        background: var(--paper);
+        border: 1px solid var(--line);
+        box-shadow: var(--shadow);
+        border-radius: var(--radius);
+      }
+
+      .panel-header {
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .panel-title {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--muted);
+      }
+
+      .panel-body { padding: 14px; }
+
+      .workspace {
+        min-height: calc(100vh - 260px);
+        padding: 0;
+      }
+
+      .agent-board {
+        display: grid;
+        grid-template-columns: minmax(280px, 30%) minmax(560px, 70%);
+        gap: 14px;
+        min-height: calc(100vh - 260px);
+      }
+
+      .stack {
+        display: grid;
+        gap: 12px;
+      }
+
+      .label {
+        display: grid;
+        gap: 5px;
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 500;
+      }
+
+      .inline-actions {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+
+      .primary-btn {
+        background: var(--accent);
+        color: #fff;
+      }
+
+      .secondary-btn {
+        background: transparent;
+        color: var(--accent);
+        border: 1px solid rgba(59, 130, 246, 0.25);
+      }
+
+      .secondary-btn:hover { background: var(--accent-soft); }
+      .primary-btn:hover { background: #2563eb; }
+
+      .empty-state {
+        padding: 16px;
+        border: 1px dashed rgba(148, 163, 184, 0.35);
+        border-radius: var(--radius);
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.5;
+        text-align: center;
+      }
+
+      .agent-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .agent-plus {
+        width: 100%;
+        background: var(--paper-strong);
+        border: 1px dashed rgba(59, 130, 246, 0.35);
+        color: var(--accent);
+      }
+
+      .agent-card {
+        width: 100%;
+        text-align: left;
+        background: var(--paper-strong);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 12px;
+      }
+
+      .agent-card.active {
+        border-color: rgba(59, 130, 246, 0.4);
+        box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.15);
+      }
+
+      .agent-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .agent-name {
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      .agent-sub, .notice, .item-meta {
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      .avatar {
+        width: 42px;
+        height: 42px;
+        border-radius: 999px;
+        background: var(--accent-soft);
+        border: 1px solid var(--line);
+        display: grid;
+        place-items: center;
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--accent);
+        overflow: hidden;
+        flex: 0 0 auto;
+      }
+
+      .avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .status-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        display: inline-block;
+      }
+
+      .status-dot.idle { background: var(--accent); }
+      .status-dot.busy { background: var(--green); }
+      .status-dot.failed { background: var(--red); }
+
+      .tab-strip {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .tab-btn {
+        background: transparent;
+        color: var(--muted);
+        border: 1px solid var(--line);
+      }
+
+      .tab-btn.active {
+        color: var(--accent);
+        border-color: rgba(59, 130, 246, 0.35);
+        background: var(--accent-soft);
+      }
+
+      .form-grid, .skills-list, .session-table, .message-list, .event-list {
+        display: grid;
+        gap: 12px;
+      }
+
+      .two-col {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+
+      .skill-card, .list-button, .message-card, .event-card {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--paper-strong);
+        padding: 12px;
+      }
+
+      .list-button {
+        width: 100%;
+        text-align: left;
+      }
+
+      .item-title {
+        font-size: 14px;
+        font-weight: 600;
+        line-height: 1.4;
+      }
+
+      .skill-head, .message-head, .event-head, .session-meta {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+
+      .badge {
+        padding: 3px 8px;
+        border-radius: 999px;
+        background: var(--accent-soft);
+        color: var(--accent);
+        font-size: 11px;
+        font-weight: 600;
+      }
+
+      .mono {
+        font-family: "SF Mono", "Fira Code", Consolas, "Liberation Mono", Menlo, monospace;
+        font-size: 12px;
+        white-space: pre-wrap;
+        word-break: break-word;
+        background: rgba(148, 163, 184, 0.06);
+        padding: 8px;
+        border-radius: 6px;
+      }
+
+      .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.25);
+        backdrop-filter: blur(2px);
+        display: grid;
+        place-items: center;
+        padding: 16px;
+        z-index: 200;
+      }
+
+      .modal {
+        width: min(1100px, 100%);
+        max-height: calc(100vh - 32px);
+        background: var(--paper-strong);
+        border: 1px solid var(--line);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-lg);
+        overflow: hidden;
+        display: grid;
+        grid-template-rows: auto 1fr;
+      }
+
+      .modal-body {
+        padding: 16px;
+        overflow: auto;
+      }
+
+      .modal-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.3fr) minmax(320px, 0.9fr);
+        gap: 12px;
+      }
+
+      .kv-table {
+        display: grid;
+        gap: 8px;
+        font-size: 13px;
+      }
+
+      @media (max-width: 1100px) {
+        .agent-board, .modal-grid, .two-col {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <div id="modal-root"></div>
+    <script>
+      (function () {
+        const state = {
+          runtimes: [],
+          selectedRuntimeId: null,
+          runtimeSnapshot: null,
+          selectedAgentId: null,
+          agentDraft: null,
+          agentTab: "config",
+          managedSessions: [],
+          sessionModal: null,
+        };
+
+        function emptyAgentDraft(runtimeId) {
+          return {
+            isNew: true,
+            runtimeId,
+            agentId: "",
+            name: "",
+            model: "",
+            summary: "",
+            enabled: true,
+            roleHint: "",
+            agentMd: "# Agent\n\nYou are the AutoReplication agent.\n",
+            enabledRuntimeSkills: [],
+            enabledAgentSkills: [],
+            avatarUrl: null,
+            avatarDataUrl: null,
+            statusText: "",
+          };
+        }
+
+        function escapeHtml(value) {
+          return String(value ?? "")
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#39;");
+        }
+
+        function localizeStatus(status) {
+          const map = {
+            idle: "空闲",
+            busy: "忙碌",
+            running: "运行中",
+            created: "已创建",
+            pending: "待处理",
+            accepted: "已接收",
+            replied: "已回复",
+            completed: "已完成",
+            failed: "失败",
+            offline: "离线",
+            applied: "已应用",
+            claimed: "Applying",
+          };
+          return map[status] || status || "未设置";
+        }
+
+        function formatTime(value) {
+          if (!value) return "未设置";
+          const date = new Date(value);
+          if (Number.isNaN(date.getTime())) return value;
+          return date.toLocaleString([], {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+        }
+
+        async function fetchJson(path, options) {
+          const response = await fetch(path, options);
+          if (!response.ok) {
+            let message = `${response.status} ${response.statusText}`;
+            try {
+              const payload = await response.json();
+              if (payload?.detail) message = String(payload.detail);
+            } catch (error) {}
+            throw new Error(message);
+          }
+          return response.json();
+        }
+
+        function avatarHtml(agent) {
+          const url = agent?.avatarUrl || agent?.avatar_url || null;
+          const name = agent?.name || agent?.id || agent?.agentId || "?";
+          if (url) {
+            return `<div class="avatar"><img src="${escapeHtml(url)}" alt="${escapeHtml(name)}"></div>`;
+          }
+          return `<div class="avatar">${escapeHtml(String(name).slice(0, 2).toUpperCase())}</div>`;
+        }
+
+        function statusDotClass(status) {
+          if (status === "busy" || status === "running") return "busy";
+          if (status === "failed" || status === "offline") return "failed";
+          return "idle";
+        }
+
+        function selectedAgent() {
+          return state.runtimeSnapshot?.agents?.find((agent) => agent.id === state.selectedAgentId) || null;
+        }
+
+        function syncDraft(agent) {
+          if (!agent) {
+            state.agentDraft = emptyAgentDraft(state.selectedRuntimeId);
+            return;
+          }
+          state.agentDraft = {
+            isNew: false,
+            runtimeId: state.selectedRuntimeId,
+            agentId: agent.id,
+            name: agent.name || agent.id,
+            model: agent.model || "",
+            summary: agent.summary || "",
+            enabled: agent.enabled !== false,
+            roleHint: agent.role_hint || "",
+            agentMd: agent.agent_md || "",
+            enabledRuntimeSkills: [...(agent.enabled_runtime_skills || [])],
+            enabledAgentSkills: [...(agent.enabled_agent_skills || [])],
+            avatarUrl: agent.avatar_url || null,
+            avatarDataUrl: null,
+            statusText: agent.applying ? "Applying..." : "",
+          };
+        }
+
+        function captureDraft() {
+          if (!state.agentDraft) return;
+          state.agentDraft = {
+            ...state.agentDraft,
+            agentId: document.getElementById("managed-agent-id")?.value || state.agentDraft.agentId,
+            name: document.getElementById("managed-agent-name")?.value || "",
+            model: document.getElementById("managed-agent-model")?.value || "",
+            summary: document.getElementById("managed-agent-summary")?.value || "",
+            roleHint: document.getElementById("managed-agent-role-hint")?.value || "",
+            agentMd: document.getElementById("managed-agent-md")?.value || "",
+            enabled: !!document.getElementById("managed-agent-enabled")?.checked,
+          };
+          if (state.sessionModal) {
+            state.sessionModal.steerText = document.getElementById("session-steer-input")?.value || "";
+          }
+        }
+
+        async function loadAgentManagement() {
+          state.runtimes = await fetchJson("/api/agent-management/runtimes");
+          if (!state.selectedRuntimeId && state.runtimes.length) {
+            state.selectedRuntimeId = state.runtimes[0].id;
+          }
+          if (state.selectedRuntimeId && !state.runtimes.some((runtime) => runtime.id === state.selectedRuntimeId)) {
+            state.selectedRuntimeId = state.runtimes[0]?.id || null;
+          }
+          if (!state.selectedRuntimeId) {
+            state.runtimeSnapshot = null;
+            state.managedSessions = [];
+            return;
+          }
+          state.runtimeSnapshot = await fetchJson(`/api/agent-management/runtimes/${encodeURIComponent(state.selectedRuntimeId)}`);
+          if (!state.selectedAgentId && state.runtimeSnapshot.agents.length) {
+            state.selectedAgentId = state.runtimeSnapshot.agents[0].id;
+            syncDraft(state.runtimeSnapshot.agents[0]);
+          }
+          if (state.selectedAgentId === "__new__") {
+            state.agentDraft = state.agentDraft || emptyAgentDraft(state.selectedRuntimeId);
+            return;
+          }
+          const agent = selectedAgent();
+          if (!agent && state.runtimeSnapshot.agents.length) {
+            state.selectedAgentId = state.runtimeSnapshot.agents[0].id;
+            syncDraft(state.runtimeSnapshot.agents[0]);
+          } else if (!agent) {
+            state.selectedAgentId = null;
+            state.agentDraft = null;
+          } else if (!state.agentDraft || state.agentDraft.agentId !== agent.id) {
+            syncDraft(agent);
+          }
+          if (state.agentTab === "sessions" && state.selectedAgentId && state.selectedAgentId !== "__new__") {
+            state.managedSessions = await fetchJson(`/api/sessions?agent_id=${encodeURIComponent(state.selectedAgentId)}`);
+          } else {
+            state.managedSessions = [];
+          }
+        }
+
+        async function loadSessionModal() {
+          if (!state.sessionModal?.sessionId) return;
+          const sessionId = state.sessionModal.sessionId;
+          const [session, messages, events] = await Promise.all([
+            fetchJson(`/api/sessions/${encodeURIComponent(sessionId)}`),
+            fetchJson(`/api/sessions/${encodeURIComponent(sessionId)}/messages?limit=100`),
+            fetchJson(`/api/sessions/${encodeURIComponent(sessionId)}/events?limit=100`),
+          ]);
+          state.sessionModal = {
+            ...state.sessionModal,
+            loading: false,
+            session,
+            messages,
+            events,
+          };
+        }
+
+        async function refreshAll() {
+          captureDraft();
+          await loadAgentManagement();
+          if (state.sessionModal?.sessionId) {
+            await loadSessionModal();
+          }
+          render();
+        }
+
+        function renderAgentList() {
+          if (!state.runtimeSnapshot) {
+            return `<div class="empty-state">当前没有在线 Runtime。</div>`;
+          }
+          const agents = state.runtimeSnapshot.agents || [];
+          return `
+            <div class="agent-list">
+              <button class="agent-plus" data-action="new-agent" type="button">+ 新建 Agent</button>
+              ${agents.length
+                ? agents.map((agent) => `
+                    <button class="agent-card ${agent.id === state.selectedAgentId ? "active" : ""}" data-action="select-agent" data-agent-id="${escapeHtml(agent.id)}" type="button">
+                      <div class="agent-row">
+                        ${avatarHtml(agent)}
+                        <div style="min-width:0;flex:1;">
+                          <div class="inline-actions" style="justify-content:space-between;">
+                            <span class="agent-name">${escapeHtml(agent.name || agent.id)}</span>
+                            <span class="status-dot ${statusDotClass(agent.status)}"></span>
+                          </div>
+                          <div class="agent-sub">${escapeHtml(agent.model || "未设置 model")} · ${escapeHtml(agent.id)}</div>
+                        </div>
+                      </div>
+                      <div class="agent-sub" style="margin-top:8px;">${escapeHtml(agent.applying ? "Applying..." : (agent.summary || "暂无摘要。"))}</div>
+                    </button>
+                  `).join("")
+                : `<div class="empty-state">当前 Runtime 还没有 Agent。</div>`}
+            </div>
+          `;
+        }
+
+        function renderSkillList(skills, selectedIds, source) {
+          if (!skills.length) {
+            return `<div class="empty-state">暂无 ${source === "runtime" ? "共享" : "专属"} skill。</div>`;
+          }
+          return `
+            <div class="skills-list">
+              ${skills.map((skill) => {
+                const checked = selectedIds.includes(skill.skill_id);
+                return `
+                  <label class="skill-card">
+                    <div class="skill-head">
+                      <div>
+                        <div class="item-title">${escapeHtml(skill.name || skill.skill_id)}</div>
+                        <div class="item-meta">${escapeHtml(skill.description || "暂无描述。")}</div>
+                      </div>
+                      <span class="badge">${escapeHtml(source === "runtime" ? "Runtime" : "Agent")}</span>
+                    </div>
+                    <div class="item-meta" style="margin-top:8px;">${escapeHtml(skill.path || "")}</div>
+                    <div class="inline-actions" style="margin-top:10px;">
+                      <input type="checkbox" data-action="toggle-skill" data-source="${escapeHtml(source)}" value="${escapeHtml(skill.skill_id)}" style="width:auto;" ${checked ? "checked" : ""}>
+                      <span class="notice">${checked ? "当前已启用" : "当前未启用"}</span>
+                    </div>
+                  </label>
+                `;
+              }).join("")}
+            </div>
+          `;
+        }
+
+        function renderConfig(agent, draft) {
+          if (!draft) {
+            return `<div class="empty-state">请选择或新建一个 Agent。</div>`;
+          }
+          const runtimeModels = state.runtimeSnapshot?.runtime?.available_models || [];
+          return `
+            <div class="form-grid">
+              <div class="two-col">
+                <label class="label">
+                  显示名
+                  <input id="managed-agent-name" value="${escapeHtml(draft.name)}">
+                </label>
+                <label class="label">
+                  Agent ID
+                  <input id="managed-agent-id" value="${escapeHtml(draft.agentId)}" ${draft.isNew ? "" : "readonly"}>
+                </label>
+              </div>
+              <div class="two-col">
+                <label class="label">
+                  Model
+                  <select id="managed-agent-model">
+                    <option value="">未设置</option>
+                    ${runtimeModels.map((item) => `<option value="${escapeHtml(item)}" ${item === draft.model ? "selected" : ""}>${escapeHtml(item)}</option>`).join("")}
+                  </select>
+                </label>
+                <label class="label">
+                  Role Hint
+                  <input id="managed-agent-role-hint" value="${escapeHtml(draft.roleHint || "")}">
+                </label>
+              </div>
+              <label class="label">
+                Summary
+                <textarea id="managed-agent-summary">${escapeHtml(draft.summary || "")}</textarea>
+              </label>
+              <label class="label">
+                AGENT.md
+                <textarea id="managed-agent-md" class="mono" style="min-height:280px;">${escapeHtml(draft.agentMd || "")}</textarea>
+              </label>
+              <div class="two-col">
+                <label class="label">
+                  头像
+                  <div class="inline-actions">
+                    ${avatarHtml({ avatarUrl: draft.avatarDataUrl || draft.avatarUrl, name: draft.name || draft.agentId })}
+                    <input id="managed-agent-avatar" type="file" accept="image/png,image/jpeg,image/webp">
+                  </div>
+                </label>
+                <label class="label">
+                  Enabled
+                  <div class="inline-actions">
+                    <input id="managed-agent-enabled" type="checkbox" style="width:auto;" ${draft.enabled ? "checked" : ""}>
+                    <span class="notice">${draft.enabled ? "当前启用" : "当前禁用"}</span>
+                  </div>
+                </label>
+              </div>
+            </div>
+          `;
+        }
+
+        function renderManagedSessions() {
+          if (state.selectedAgentId === "__new__") {
+            return `<div class="empty-state">新建 Agent 还没有 Session。</div>`;
+          }
+          if (!state.managedSessions.length) {
+            return `<div class="empty-state">这个 Agent 暂无 Session。</div>`;
+          }
+          return `
+            <div class="session-table">
+              ${state.managedSessions.map((session) => `
+                <button class="list-button" data-action="open-session" data-session-id="${escapeHtml(session.id)}" type="button">
+                  <div class="item-title">${escapeHtml(session.title)}</div>
+                  <div class="session-meta" style="margin-top:8px;">
+                    <span>${escapeHtml(localizeStatus(session.status))}</span>
+                    <span>${escapeHtml(session.task_id || "无 task")}</span>
+                    <span>${escapeHtml(formatTime(session.updated_at))}</span>
+                  </div>
+                  <div class="item-meta" style="margin-top:8px;">${escapeHtml(session.summary || "暂无摘要。")}</div>
+                </button>
+              `).join("")}
+            </div>
+          `;
+        }
+
+        function renderPromptPreview(agent) {
+          const preview = agent?.prompt_preview || {};
+          return `
+            <div class="stack">
+              <section class="surface">
+                <div class="panel-header"><div class="panel-title">归一化 Prompt 预览</div></div>
+                <div class="panel-body mono">${escapeHtml(preview.normalized_text || "暂无预览。")}</div>
+              </section>
+              <section class="surface">
+                <div class="panel-header"><div class="panel-title">Skills 摘要</div></div>
+                <div class="panel-body mono">${escapeHtml(preview.skills_summary || "none")}</div>
+              </section>
+            </div>
+          `;
+        }
+
+        function renderBody() {
+          const runtimeOptions = state.runtimes.length
+            ? state.runtimes.map((runtime) => `
+                <option value="${escapeHtml(runtime.id)}" ${runtime.id === state.selectedRuntimeId ? "selected" : ""}>
+                  ${escapeHtml(runtime.name)} · ${escapeHtml(runtime.machine_id)}
+                </option>
+              `).join("")
+            : `<option value="">暂无在线 Runtime</option>`;
+          const agent = selectedAgent();
+          const draft = state.agentDraft;
+          const runtimeSkills = state.runtimeSnapshot?.runtime?.shared_skills || [];
+          const agentSkills = agent?.agent_skill_inventory || [];
+          let mainBody = `<div class="empty-state">请选择一个 Agent 开始编辑。</div>`;
+          if (draft) {
+            if (state.agentTab === "config") {
+              mainBody = renderConfig(agent, draft);
+            } else if (state.agentTab === "skills") {
+              mainBody = `
+                <div class="stack">
+                  <section class="surface">
+                    <div class="panel-header"><div class="panel-title">Runtime 共享 Skills</div></div>
+                    <div class="panel-body">${renderSkillList(runtimeSkills, draft.enabledRuntimeSkills || [], "runtime")}</div>
+                  </section>
+                  <section class="surface">
+                    <div class="panel-header"><div class="panel-title">Agent 专属 Skills</div></div>
+                    <div class="panel-body">${renderSkillList(agentSkills, draft.enabledAgentSkills || [], "agent")}</div>
+                  </section>
+                </div>
+              `;
+            } else if (state.agentTab === "sessions") {
+              mainBody = renderManagedSessions();
+            } else if (state.agentTab === "prompt") {
+              mainBody = renderPromptPreview(agent || draft);
+            }
+          }
+          return `
+            <div class="workspace">
+              <div class="agent-board">
+                <aside class="stack">
+                  <section class="surface">
+                    <div class="panel-header"><div class="panel-title">Runtime</div></div>
+                    <div class="panel-body">
+                      <label class="label">
+                        当前 Runtime
+                        <select id="runtime-select">${runtimeOptions}</select>
+                      </label>
+                      <div class="notice" style="margin-top:10px;">只展示在线 Runtime。</div>
+                    </div>
+                  </section>
+                  <section class="surface" style="min-height:0;">
+                    <div class="panel-header"><div class="panel-title">Agents</div></div>
+                    <div class="panel-body">
+                      ${renderAgentList()}
+                    </div>
+                  </section>
+                </aside>
+                <section class="surface">
+                  <div class="panel-header">
+                    <div>
+                      <div class="panel-title">Agent 管理</div>
+                      <div style="margin-top:4px;font-weight:600;">${escapeHtml(draft?.name || agent?.name || "未选择 Agent")}</div>
+                      <div class="notice">${escapeHtml(draft?.statusText || "")}</div>
+                    </div>
+                    <div class="inline-actions">
+                      <div class="tab-strip">
+                        <button class="tab-btn ${state.agentTab === "config" ? "active" : ""}" data-action="set-tab" data-tab="config" type="button">配置</button>
+                        <button class="tab-btn ${state.agentTab === "skills" ? "active" : ""}" data-action="set-tab" data-tab="skills" type="button">Skills</button>
+                        <button class="tab-btn ${state.agentTab === "sessions" ? "active" : ""}" data-action="set-tab" data-tab="sessions" type="button">Sessions</button>
+                        <button class="tab-btn ${state.agentTab === "prompt" ? "active" : ""}" data-action="set-tab" data-tab="prompt" type="button">Prompt 预览</button>
+                      </div>
+                      <button class="secondary-btn" data-action="refresh" type="button">刷新</button>
+                      <button class="primary-btn" data-action="save-agent" type="button" ${draft ? "" : "disabled"}>Save</button>
+                    </div>
+                  </div>
+                  <div class="panel-body">${mainBody}</div>
+                </section>
+              </div>
+            </div>
+          `;
+        }
+
+        function renderSessionModal() {
+          if (!state.sessionModal) return "";
+          const { loading, session, messages, events, steerText, statusText } = state.sessionModal;
+          return `
+            <div class="modal-backdrop" data-modal="session">
+              <div class="modal">
+                <div class="panel-header">
+                  <div>
+                    <div class="panel-title">Session</div>
+                    <div style="margin-top:4px;font-weight:600;">${escapeHtml(session?.title || "加载中...")}</div>
+                  </div>
+                  <button class="secondary-btn" data-action="close-session-modal" type="button">关闭</button>
+                </div>
+                <div class="modal-body">
+                  ${loading
+                    ? `<div class="empty-state">正在加载 Session 详情...</div>`
+                    : `
+                      <div class="modal-grid">
+                        <section class="surface">
+                          <div class="panel-header"><div class="panel-title">Messages</div></div>
+                          <div class="panel-body">
+                            ${messages?.length
+                              ? `<div class="message-list">${messages.map((message) => `
+                                    <div class="message-card">
+                                      <div class="message-head">
+                                        <span>${escapeHtml(message.sender)} · ${escapeHtml(message.direction)}</span>
+                                        <span>${escapeHtml(formatTime(message.created_at))}</span>
+                                      </div>
+                                      <div class="mono" style="margin-top:8px;">${escapeHtml(message.content)}</div>
+                                    </div>
+                                  `).join("")}</div>`
+                              : `<div class="empty-state">暂无消息。</div>`}
+                          </div>
+                        </section>
+                        <section class="stack">
+                          <section class="surface">
+                            <div class="panel-header"><div class="panel-title">Session Info</div></div>
+                            <div class="panel-body kv-table">
+                              <div><strong>ID:</strong> ${escapeHtml(session.id)}</div>
+                              <div><strong>Agent:</strong> ${escapeHtml(session.agent_id)}</div>
+                              <div><strong>状态:</strong> ${escapeHtml(localizeStatus(session.status))}</div>
+                              <div><strong>Task:</strong> ${escapeHtml(session.task_id || "未设置")}</div>
+                              <div><strong>Dispatch:</strong> ${escapeHtml(session.dispatch_id || "未设置")}</div>
+                              <div><strong>Model:</strong> ${escapeHtml(session.model || "未设置")}</div>
+                              <div><strong>更新于:</strong> ${escapeHtml(formatTime(session.updated_at))}</div>
+                            </div>
+                          </section>
+                          <section class="surface">
+                            <div class="panel-header"><div class="panel-title">Events</div></div>
+                            <div class="panel-body">
+                              ${events?.length
+                                ? `<div class="event-list">${events.map((event) => `
+                                      <div class="event-card">
+                                        <div class="event-head">
+                                          <span>${escapeHtml(event.event_type)}</span>
+                                          <span>${escapeHtml(formatTime(event.created_at))}</span>
+                                        </div>
+                                        <div class="mono" style="margin-top:8px;">${escapeHtml(JSON.stringify(event.payload, null, 2))}</div>
+                                      </div>
+                                    `).join("")}</div>`
+                                : `<div class="empty-state">暂无事件。</div>`}
+                            </div>
+                          </section>
+                          <section class="surface">
+                            <div class="panel-header"><div class="panel-title">Steer</div></div>
+                            <div class="panel-body">
+                              <label class="label">
+                                Steering 输入
+                                <textarea id="session-steer-input">${escapeHtml(steerText || "")}</textarea>
+                              </label>
+                              <div class="inline-actions">
+                                <button class="primary-btn" data-action="submit-steer" type="button">发送</button>
+                                <span class="notice">${escapeHtml(statusText || "")}</span>
+                              </div>
+                            </div>
+                          </section>
+                        </section>
+                      </div>
+                    `}
+                </div>
+              </div>
+            </div>
+          `;
+        }
+
+        function render() {
+          document.getElementById("app").innerHTML = renderBody();
+          document.getElementById("modal-root").innerHTML = renderSessionModal();
+        }
+
+        async function openSessionModal(sessionId) {
+          state.sessionModal = {
+            sessionId,
+            loading: true,
+            session: null,
+            messages: [],
+            events: [],
+            steerText: "",
+            statusText: "",
+          };
+          render();
+          try {
+            await loadSessionModal();
+            render();
+          } catch (error) {
+            state.sessionModal = { ...state.sessionModal, loading: false, statusText: error.message };
+            render();
+          }
+        }
+
+        async function saveAgent() {
+          captureDraft();
+          const draft = state.agentDraft;
+          if (!draft || !draft.runtimeId) return;
+          if (!draft.agentId.trim() || !draft.name.trim() || !draft.agentMd.trim()) {
+            state.agentDraft.statusText = "Agent ID、显示名和 AGENT.md 为必填项。";
+            render();
+            return;
+          }
+          state.agentDraft.statusText = "Saving...";
+          render();
+          const payload = {
+            name: draft.name.trim(),
+            model: draft.model || null,
+            summary: draft.summary.trim() || null,
+            enabled: draft.enabled,
+            role_hint: draft.roleHint.trim() || null,
+            agent_md: draft.agentMd,
+            enabled_runtime_skills: draft.enabledRuntimeSkills,
+            enabled_agent_skills: draft.enabledAgentSkills,
+            avatar_data_url: draft.avatarDataUrl || null,
+          };
+          try {
+            if (draft.isNew) {
+              await fetchJson(`/api/agent-management/runtimes/${encodeURIComponent(draft.runtimeId)}/agents`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ ...payload, agent_id: draft.agentId.trim() }),
+              });
+              state.selectedAgentId = draft.agentId.trim();
+            } else {
+              await fetchJson(`/api/agent-management/agents/${encodeURIComponent(draft.agentId)}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+              });
+            }
+            await refreshAll();
+          } catch (error) {
+            state.agentDraft.statusText = error.message;
+            render();
+          }
+        }
+
+        async function submitSteer() {
+          if (!state.sessionModal?.sessionId) return;
+          captureDraft();
+          const content = String(state.sessionModal.steerText || "").trim();
+          if (!content) {
+            state.sessionModal.statusText = "请输入 steer 内容。";
+            render();
+            return;
+          }
+          state.sessionModal.statusText = "发送中...";
+          render();
+          try {
+            await fetchJson(`/api/sessions/${encodeURIComponent(state.sessionModal.sessionId)}/inputs`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ content, kind: "message", sender: "operator", metadata: { source: "agent-panel" } }),
+            });
+            state.sessionModal.steerText = "";
+            state.sessionModal.statusText = "已入队。";
+            await loadSessionModal();
+            render();
+          } catch (error) {
+            state.sessionModal.statusText = error.message;
+            render();
+          }
+        }
+
+        function toggleSkill(input) {
+          const draft = state.agentDraft;
+          if (!draft) return;
+          const key = input.dataset.source === "runtime" ? "enabledRuntimeSkills" : "enabledAgentSkills";
+          const current = new Set(draft[key] || []);
+          if (input.checked) current.add(input.value);
+          else current.delete(input.value);
+          draft[key] = [...current].sort();
+        }
+
+        async function handleClick(event) {
+          const button = event.target.closest("[data-action]");
+          if (!button) return;
+          const action = button.dataset.action;
+          if (action === "refresh") {
+            await refreshAll();
+            return;
+          }
+          if (action === "new-agent") {
+            state.selectedAgentId = "__new__";
+            state.agentTab = "config";
+            state.agentDraft = emptyAgentDraft(state.selectedRuntimeId);
+            render();
+            return;
+          }
+          if (action === "select-agent") {
+            captureDraft();
+            state.selectedAgentId = button.dataset.agentId;
+            syncDraft(selectedAgent());
+            if (state.agentTab === "sessions") {
+              await loadAgentManagement();
+            }
+            render();
+            return;
+          }
+          if (action === "set-tab") {
+            captureDraft();
+            state.agentTab = button.dataset.tab;
+            await loadAgentManagement();
+            render();
+            return;
+          }
+          if (action === "save-agent") {
+            await saveAgent();
+            return;
+          }
+          if (action === "open-session") {
+            await openSessionModal(button.dataset.sessionId);
+            return;
+          }
+          if (action === "close-session-modal") {
+            state.sessionModal = null;
+            render();
+            return;
+          }
+          if (action === "submit-steer") {
+            await submitSteer();
+          }
+        }
+
+        async function handleChange(event) {
+          const target = event.target;
+          if (target.id === "runtime-select") {
+            captureDraft();
+            state.selectedRuntimeId = target.value || null;
+            state.selectedAgentId = null;
+            state.agentDraft = null;
+            await loadAgentManagement();
+            render();
+            return;
+          }
+          if (target.dataset.action === "toggle-skill") {
+            toggleSkill(target);
+            return;
+          }
+          if (target.id === "managed-agent-avatar" && target.files?.[0]) {
+            const file = target.files[0];
+            const reader = new FileReader();
+            reader.onload = () => {
+              if (!state.agentDraft) return;
+              state.agentDraft.avatarDataUrl = String(reader.result || "");
+              state.agentDraft.avatarUrl = String(reader.result || "");
+              render();
+            };
+            reader.readAsDataURL(file);
+          }
+        }
+
+        function bindEvents() {
+          document.addEventListener("click", (event) => {
+            handleClick(event).catch((error) => console.error(error));
+          });
+          document.addEventListener("change", (event) => {
+            handleChange(event).catch((error) => console.error(error));
+          });
+          document.addEventListener("click", (event) => {
+            const backdrop = event.target.closest(".modal-backdrop");
+            if (!backdrop || event.target !== backdrop) return;
+            state.sessionModal = null;
+            render();
+          });
+        }
+
+        async function boot() {
+          bindEvents();
+          await refreshAll();
+          window.setInterval(() => {
+            refreshAll().catch(() => {});
+          }, 5000);
+        }
+
+        boot().catch((error) => {
+          document.getElementById("app").innerHTML = `<div class="empty-state">Agent 管理页加载失败：${escapeHtml(error.message)}</div>`;
+        });
+      })();
+    </script>
+  </body>
+</html>

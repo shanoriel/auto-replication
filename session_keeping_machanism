@@ -1,0 +1,189 @@
+# OpenClaw Session Keeping Mechanism
+
+本文档只总结我对 OpenClaw 的 **session 持久化 / 长期保持 / 消息注入** 机制的理解。
+
+注意：
+
+- 这是对 OpenClaw 公开文档的理解总结
+- 不是 AutoReplication 的最终设计结论
+- OpenClaw 的 Gateway-owned session 模型，和我们当前“Runtime 持有 session 运行体”的方向并不完全一样
+
+## 1. OpenClaw 是怎么“保持 session 不断”的
+
+OpenClaw 的关键不是“一个进程永远不退出”，而是：
+
+- 每条外部消息都会先被映射到一个稳定的 `sessionKey`
+- 只要这个 `sessionKey` 没有被 reset / prune / 过期，后续消息都会继续落到同一个 session
+
+也就是说，OpenClaw 保持会话连续性的核心是：
+
+- **稳定的 sessionKey**
+- **消息到 sessionKey 的固定映射**
+- **session store 持久化**
+
+## 2. sessionKey 是它的核心抽象
+
+OpenClaw 会把不同来源的消息映射成不同形状的 `sessionKey`。
+
+典型规则：
+
+- DM 默认会折叠到主 session
+  - `agent:<agentId>:<mainKey>`
+- 群组 / channel 会按 channel 隔离
+  - `agent:<agentId>:<channel>:group:<id>`
+  - `agent:<agentId>:<channel>:channel:<id>`
+- 线程也会进一步细分
+  - Discord / Slack thread 会附加 thread id
+  - Telegram topic 也会附加 topic id
+
+因此“每个 Telegram/Discord channel 是一个 session”这件事，本质上就是：
+
+- 每个 channel 都会生成自己稳定的 `sessionKey`
+- 后续消息反复命中同一个 key
+
+## 3. OpenClaw 的 session 是怎么持久化的
+
+OpenClaw 的公开文档明确说：
+
+- session state 由 gateway 持有
+- store 文件是 `sessions.json`
+- transcript 单独存成 `jsonl`
+
+也就是说它至少把 session 拆成两层：
+
+1. `sessions.json`
+   - `sessionKey -> sessionId + timestamps + metadata`
+2. `<sessionId>.jsonl`
+   - 具体 transcript
+
+这里最重要的一点是：
+
+- **sessionKey 是稳定索引**
+- **sessionId 是具体会话实例**
+- **transcript 和会话索引分开存**
+
+## 4. OpenClaw 的“注入已有 session”能力怎么来的
+
+OpenClaw 文档里有 session tools：
+
+- `sessions_list`
+- `sessions_history`
+- `sessions_send`
+- `sessions_spawn`
+
+其中最关键的是：
+
+- `sessions_send`
+
+它的语义很直接：
+
+- 给另一个已有 session 发消息
+- 可以立即返回
+- 也可以等待目标 session 的回复
+
+这说明 OpenClaw 并不是只会“新建 session 再说话”，而是天然支持：
+
+- 找到已有 session
+- 向该 session 继续投递输入
+
+这就是它实现 session injection 的核心能力。
+
+## 5. OpenClaw 长期会话成立的真正条件
+
+我现在的理解是，OpenClaw 的长期 session 能成立，需要同时满足下面几件事：
+
+1. 外部消息先被路由成稳定 `sessionKey`
+2. Gateway 有持久化 session store
+3. 同一个 `sessionKey` 会不断命中同一个 session
+4. 系统支持对已有 session 继续发送消息
+
+所以它的连续性不是靠“聊天软件替它保存上下文”，而是靠：
+
+- 自己维护的 session store
+- 自己的 routing
+- 自己的 send-to-session 能力
+
+## 6. 这套机制对我们最有价值的启发
+
+对 AutoReplication 来说，OpenClaw 最值得借鉴的不是“Gateway 拥有 session”这个边界，而是下面这三件事：
+
+### 6.1 必须有稳定的 session identity
+
+不能只靠 `session_id` 当运行时随机实例。
+
+还需要一个稳定身份来表达：
+
+- 某个 task 下
+- 某个 agent 的主 session
+
+例如未来我们可能需要类似：
+
+- `task:<task_id>:agent:<agent_id>:primary`
+
+## 6.2 必须有向已有 session 投递输入的能力
+
+如果没有 `send-to-existing-session` 机制，就做不出：
+
+- clarification 回注
+- operator steering 注入
+- 长期主 session 持续推进
+
+## 6.3 session store 和 transcript 要分层
+
+至少在逻辑上要分开：
+
+- session 的结构化索引与状态
+- session 的消息 / 事件 / transcript
+
+否则很难做：
+
+- routing
+- multi-session 管理
+- UI 查询
+- 生命周期控制
+
+## 7. 和我们当前设计的关键差异
+
+这里必须明确：
+
+- OpenClaw 文档写的是 **Gateway is the source of truth**
+- 它的 session store 明确放在 gateway host 上
+
+但我们当前更倾向的边界是：
+
+- Gateway 是中控、路由、权威状态源
+- Runtime 才持有 session 的真实运行体
+
+所以我们不能直接照抄：
+
+- “Gateway 持有 session 本体”
+
+我们真正应该借的是：
+
+- 稳定 session identity
+- 明确的 session store
+- 给已有 session 发送消息的能力
+- channel / source -> session key 的固定映射思想
+
+## 8. 我当前的简短结论
+
+我现在对 OpenClaw session 持久化机制的理解可以压缩成一句话：
+
+**OpenClaw 通过稳定的 `sessionKey`、持久化的 session store，以及 `sessions_send` 这种向已有 session 继续投递消息的能力，来实现“每个 channel / 会话面长期绑定一个 session”的效果。**
+
+对我们真正有用的实现思想是：
+
+- 给 session 一个稳定身份
+- 让消息总能路由回这个身份
+- 支持向这个 session 持续注入新输入
+
+## 9. 参考来源
+
+- OpenClaw Session Management  
+  https://openclawlab.com/en/docs/concepts/session/
+- OpenClaw Session docs  
+  https://docs.openclaw.ai/concepts/session
+- OpenClaw Session Tools  
+  https://docs.openclaw.ai/concepts/session-tool
+- OpenClaw Channel Routing  
+  https://docs.openclaw.ai/channels/channel-routing

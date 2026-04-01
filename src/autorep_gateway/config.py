@@ -14,6 +14,7 @@ class Settings:
     db_path: Path = Path(__file__).resolve().parents[2] / "data" / "gateway.db"
     static_dir: Path = Path(__file__).resolve().parents[2] / "static"
     catalog_path: Path = Path(__file__).resolve().parents[2] / "data" / "catalog.json"
+    agent_asset_dir: Path = Path(__file__).resolve().parents[2] / "data" / "agent-assets"
 
 
 settings = Settings()

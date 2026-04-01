@@ -1,0 +1,323 @@
+# Dispatch 通信协议设计
+
+本文档定义 AutoReplication 中 Agent 间通信（dispatch）的协议设计，包括分层模型、数据结构、路由规则和 skill 接口。
+
+---
+
+## 1. 分层模型
+
+Dispatch 通信分为三层，各层只关心自己的职责，不越界：
+
+```
+┌─────────────────────────────────────────────────┐
+│  Agent 层（应用层）                               │
+│  Agent 只知道：我要找 Agent B，内容是 xxx          │
+│  Agent 不知道：session_id, dispatch_id, runtime   │
+├─────────────────────────────────────────────────┤
+│  Runtime 层（传输层）                             │
+│  负责：把 Agent 的意图包装成可路由的 dispatch      │
+│  维护：本地的 session ↔ dispatch 映射表           │
+│  填充：parent_dispatch_id 等路由元数据            │
+├─────────────────────────────────────────────────┤
+│  Gateway 层（网络层）                             │
+│  负责：Agent-to-Agent 路由                        │
+│  维护：agent → runtime 映射、dispatch 契约账本    │
+│  只认：agent_id，不认 session_id                  │
+└─────────────────────────────────────────────────┘
+```
+
+核心原则：
+
+- **Gateway 不知道 session_id**。Gateway 的 dispatch 记录中没有任何 session 字段。路由完全基于 agent_id。
+- **Session 级路由由 Runtime 内部完成**。Runtime 维护本地映射表，知道"哪个 session 发了哪个 dispatch"和"哪个 session 在处理哪个 dispatch"。
+- **Agent 只感知 Agent**。模型层面 Agent 只知道自己在和另一个 Agent 交互，不知道底层的 session、dispatch_id、runtime 等概念。
+
+---
+
+## 2. Dispatch 类型
+
+当前阶段只保留两类 dispatch：
+
+- `work_order`：上层 Agent 向下层 Agent 分配的最小可执行工单
+- `clarification_request`：下层 Agent 向上层 Agent 请求补充信息
+
+所有 dispatch 都有义务被回复。不允许嵌套 clarification（收到 clarification 后必须以 reply 回应，不能反向发 clarification）。
+
+---
+
+## 3. Gateway 的 Dispatch 数据结构
+
+```
+dispatch
+├── id                    TEXT PRIMARY KEY   -- Gateway 生成
+├── task_id               TEXT               -- 属于哪个 task
+├── kind                  TEXT               -- work_order / clarification_request
+├── from_agent_id         TEXT               -- 发起方 Agent
+├── to_agent_id           TEXT               -- 目标 Agent
+├── parent_dispatch_id    TEXT NULL           -- clarification 指向原 work_order
+├── payload               JSON               -- 结构化内容
+├── status                TEXT               -- pending / running / replied / failed
+├── reply                 JSON NULL           -- 回复内容
+├── created_at            TEXT
+└── resolved_at           TEXT NULL
+```
+
+注意：**没有任何 session_id 字段**。Session 是 Runtime 层的概念，不进入 Gateway 的 dispatch 账本。
+
+---
+
+## 4. Runtime 本地映射表
+
+Runtime 在本地维护 dispatch 与 session 的关联，持久化到磁盘以支持重启恢复：
+
+```
+outbound:   dispatch_id → origin_session_id
+            "我的哪个 session 发出了这个 dispatch"
+
+inbound:    dispatch_id → handler_session_id
+            "我的哪个 session 在处理这个 dispatch"
+
+反查:       session_id → dispatch_id
+            "这个 session 当前在处理哪个 dispatch"
+```
+
+这是 session 级路由的唯一数据源，Gateway 不持有这些信息。
+
+---
+
+## 5. Gateway 路由规则
+
+### 5.1 Work-Order 路由
+
+```
+收到 POST /api/dispatches:
+  kind = work_order
+  to_agent_id 必填
+  查 agent → runtime 映射
+  创建 dispatch 记录，status = pending
+  目标 Runtime 下次 poll 拿到
+```
+
+### 5.2 Clarification 路由
+
+```
+收到 POST /api/dispatches:
+  kind = clarification_request
+  to_agent_id 必填
+  parent_dispatch_id 必填
+
+  校验规则：
+    parent = lookup(parent_dispatch_id)
+    assert to_agent_id == parent.from_agent_id    ← 一致性校验，不一致则拒绝
+
+  路由依据：parent_dispatch_id（权威源）
+  to_agent_id 在此场景下是声明性断言，Gateway 校验但不靠它做路由决策
+```
+
+### 5.3 Reply 路由
+
+```
+收到 PATCH /api/dispatches/{id}:
+  status = replied, reply = {...}
+
+  查原 dispatch 的 from_agent_id → 对应 Runtime
+  将 reply 投递到该 Runtime 的待处理队列
+```
+
+---
+
+## 6. 完整交互流程
+
+### 6.1 Work-Order 流程（A → B → reply）
+
+```
+Agent A（在 session S_A 中）:
+  调用 skill: work-order --to-agent B --payload-file spec.json
+  Agent A 不知道 session_id、dispatch_id、runtime
+
+Runtime A:
+  收到 skill 调用
+  发给 Gateway: POST /api/dispatches
+    { from_agent: A, to_agent: B, kind: work_order, payload: ... }
+  Gateway 返回: { dispatch_id: D1 }
+  本地记录: outbound[D1] = S_A
+
+Gateway:
+  创建 dispatch D1, status = pending
+  只存 from_agent_id=A, to_agent_id=B
+  不知道也不关心 S_A
+
+Runtime B:
+  轮询拿到 D1 (pending, to_agent=B)
+  创建新 session S_B 来处理 D1
+  本地记录: inbound[D1] = S_B, session[S_B].handling = D1
+  将 D1 的 payload 注入 S_B 作为初始 prompt
+
+Agent B（在 session S_B 中）:
+  完成工作
+  调用 skill: reply --result-file result.json
+  Agent B 不需要指定任何路由信息
+
+Runtime B:
+  查本地: S_B 在处理 D1
+  发给 Gateway: PATCH /api/dispatches/D1
+    { status: replied, reply: { ... } }
+
+Gateway:
+  更新 D1: status=replied
+  查 D1.from_agent = A → A 在 Runtime A
+  将 reply 投递到 Runtime A 的待处理队列
+
+Runtime A:
+  轮询拿到 "D1 已 replied"
+  查本地: outbound[D1] = S_A
+  将 reply 注入 S_A
+  Agent A 在 S_A 中继续推进
+```
+
+### 6.2 Clarification 流程（B → A → respond）
+
+```
+Agent B（在 session S_B 中，处理 D1 时发现信息不足）:
+  调用 skill: request-clarify --question "What simulator version?"
+  Agent B 不需要指定目标 Agent 或 dispatch ID
+
+Runtime B:
+  查本地: S_B 在处理 D1, D1.from_agent = A
+  自动填充 parent_dispatch_id = D1, to_agent = A
+  发给 Gateway: POST /api/dispatches
+    { from_agent: B, to_agent: A, kind: clarification_request,
+      parent_dispatch_id: D1, payload: { question: "..." } }
+  Gateway 校验: to_agent(A) == D1.from_agent(A) ✓
+  Gateway 返回: { dispatch_id: D2 }
+  本地记录: outbound[D2] = S_B
+
+Gateway:
+  创建 dispatch D2, parent = D1
+  路由依据: parent D1 的 from_agent = A → A 在 Runtime A
+  D2 进入 Runtime A 的待处理队列
+
+Runtime A:
+  轮询拿到 D2 (clarification, parent=D1)
+  查本地: outbound[D1] = S_A
+  将 D2 注入 S_A（不开新 session）
+  本地记录: outbound[D2] = S_A
+
+Agent A（在 S_A 中收到 clarification）:
+  回复 clarification
+  调用 skill: reply --result-file clarification_answer.json
+
+Runtime A:
+  查本地: S_A 最近待回复的是 D2
+  发给 Gateway: PATCH /api/dispatches/D2
+    { status: replied, reply: { ... } }
+
+Gateway:
+  更新 D2, 查 D2.from_agent = B → B 在 Runtime B
+  将 reply 投递到 Runtime B 的待处理队列
+
+Runtime B:
+  查本地: outbound[D2] = S_B
+  将 reply 注入 S_B
+  S_B 继续处理 D1
+```
+
+---
+
+## 7. Agent 层 Skill 接口
+
+Agent 通过本地 CLI skill 与 dispatch 系统交互。设计原则：Agent 层只感知 Agent，不感知底层路由概念。
+
+### 7.1 发送工单
+
+```bash
+autorep-dispatch work-order \
+  --to-agent <agent_id> \
+  --payload-file <path>
+```
+
+必填：`--to-agent`、`--payload-file`。
+Runtime 自动填充：`from_agent_id`（当前 session 所属 Agent）。
+
+### 7.2 请求澄清
+
+```bash
+autorep-dispatch request-clarify \
+  --question "<question text>"
+```
+
+无需指定目标 Agent。
+Runtime 自动填充：`to_agent_id`（当前 session 正在处理的 dispatch 的 from_agent）、`parent_dispatch_id`（当前 session 正在处理的 dispatch ID）。
+
+### 7.3 回复 Dispatch
+
+```bash
+autorep-dispatch reply \
+  --result-file <path>
+```
+
+无需指定任何路由信息。
+Runtime 自动填充：目标 dispatch ID（当前 session 正在处理或最近待回复的 dispatch）。
+
+### 7.4 Skill 接口设计原则
+
+- `work-order` 是唯一需要 Agent 指定目标的操作
+- `request-clarify` 和 `reply` 的路由信息完全由 Runtime 从本地映射表推导
+- Agent 永远不需要知道 dispatch_id、session_id 或 runtime_id
+
+---
+
+## 8. 约束规则
+
+### 8.1 不允许嵌套 Clarification
+
+Agent A 收到来自 Agent B 的 clarification_request 后，必须以 reply 回应。不允许 A 对 B 的 clarification 再发 clarification。如果 A 需要 B 的额外信息，应在 reply 中说明，或另发新的 work_order。
+
+### 8.2 每个 Dispatch 必须被回复
+
+所有 dispatch 不论 kind 都要求正式回复。回复可以表示成功、部分完成、失败、或因阻塞未完成，但不能无回复。
+
+### 8.3 Clarification 一致性校验
+
+Gateway 创建 clarification_request 时，必须校验 `to_agent_id == parent_dispatch.from_agent_id`。不一致则拒绝创建。`to_agent_id` 在 clarification 中是声明性断言，路由权威源是 `parent_dispatch_id`。
+
+---
+
+## 9. Session 持久化与注入机制
+
+### 9.1 Session 持久化
+
+Codex CLI 原生支持 thread 持久化。Runtime 利用 `thread_id` 实现 session 的持续存在：
+
+- 首次启动：`codex exec "..." → 拿到 thread_id`
+- 后续注入：`codex exec --thread <thread_id> "new message"`
+- Runtime 本地持久化 `session_id → thread_id` 映射
+
+### 9.2 消息注入场景
+
+需要向已有 session 注入消息的场景：
+
+- Dispatch reply 回流到发起方 session
+- Clarification request 注入到原 work_order 发起方 session
+- Clarification response 回流到请求方 session
+- Operator steering 注入到指定 session
+
+所有注入都通过 Runtime 的本地映射表找到目标 session，再利用 Codex 的 thread 机制注入。
+
+### 9.3 Session 生命周期
+
+- Session 不因一次执行完成而自动消失
+- Session 由系统显式终止或删除
+- 执行完成后 session 进入 idle / waiting_input 状态
+- Runtime 重启后通过本地持久化的映射表恢复 session 关联
+
+---
+
+## 10. 实施优先级
+
+1. **Gateway dispatch 表结构落地**（去除 session_id 字段，保持纯 Agent 层路由）
+2. **Runtime 本地映射表实现**（outbound / inbound / 反查，持久化到磁盘）
+3. **Skill CLI 接口实现**（work-order / request-clarify / reply 三个命令）
+4. **Work-Order 完整闭环**（A 发 → B 收 → B 回 → A 收到 reply）
+5. **Clarification 闭环**（B 发 clarification → A 收到并注入原 session → A reply → B 收到）
+6. **Operator steering 注入**（走 session_inputs 机制，不经过 dispatch）

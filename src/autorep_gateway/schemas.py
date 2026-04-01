@@ -25,6 +25,49 @@ class RuntimeHeartbeat(BaseModel):
     capabilities: dict[str, Any] = Field(default_factory=dict)
 
 
+class RuntimeAgentSyncSkill(BaseModel):
+    skill_id: str
+    name: str
+    description: str | None = None
+    path: str | None = None
+    source: Literal["runtime", "agent"]
+
+
+class RuntimeAgentPromptPreview(BaseModel):
+    normalized_text: str
+    agent_md: str
+    skills_summary: str | None = None
+
+
+class RuntimeAgentSnapshot(BaseModel):
+    agent_id: str
+    name: str
+    status: str = "idle"
+    summary: str | None = None
+    model: str | None = None
+    enabled: bool = True
+    role_hint: str | None = None
+    avatar_url: str | None = None
+    agent_md: str
+    enabled_runtime_skills: list[str] = Field(default_factory=list)
+    enabled_agent_skills: list[str] = Field(default_factory=list)
+    runtime_skill_inventory: list[RuntimeAgentSyncSkill] = Field(default_factory=list)
+    agent_skill_inventory: list[RuntimeAgentSyncSkill] = Field(default_factory=list)
+    prompt_preview: RuntimeAgentPromptPreview
+    present: bool = True
+
+
+class RuntimeAgentSync(BaseModel):
+    shared_skills: list[RuntimeAgentSyncSkill] = Field(default_factory=list)
+    available_models: list[str] = Field(default_factory=list)
+    agents: list[RuntimeAgentSnapshot] = Field(default_factory=list)
+
+
+class RuntimeAgentOpUpdate(BaseModel):
+    status: Literal["claimed", "applied", "failed"]
+    error_text: str | None = None
+
+
 class AgentRegistration(BaseModel):
     agent_id: str | None = None
     runtime_id: str | None = None
@@ -43,6 +86,31 @@ class AgentHeartbeat(BaseModel):
     status: str
     summary: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class AgentManagementCreate(BaseModel):
+    agent_id: str
+    name: str
+    model: str | None = None
+    summary: str | None = None
+    enabled: bool = True
+    agent_md: str
+    enabled_runtime_skills: list[str] = Field(default_factory=list)
+    enabled_agent_skills: list[str] = Field(default_factory=list)
+    avatar_data_url: str | None = None
+    role_hint: str | None = None
+
+
+class AgentManagementUpdate(BaseModel):
+    name: str
+    model: str | None = None
+    summary: str | None = None
+    enabled: bool = True
+    agent_md: str
+    enabled_runtime_skills: list[str] = Field(default_factory=list)
+    enabled_agent_skills: list[str] = Field(default_factory=list)
+    avatar_data_url: str | None = None
+    role_hint: str | None = None
 
 
 class TaskCreate(BaseModel):
